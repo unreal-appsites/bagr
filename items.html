@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Items — Bagr</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .item-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.9rem 1rem; border: 2px solid var(--ink); border-radius: var(--radius);
+    background: white; margin-bottom: 0.75rem;
+  }
+  .item-name { font-weight: 600; }
+  .toggle { display: flex; border: 2px solid var(--ink); border-radius: var(--radius); overflow: hidden; font-family: var(--mono); font-size: 0.75rem; }
+  .toggle button { border: none; background: white; padding: 0.5rem 0.9rem; text-transform: uppercase; }
+  .toggle button.active.home { background: var(--amber); }
+  .toggle button.active.away { background: var(--stamp); color: white; }
+  .add-row { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+  .add-row input { flex: 1; padding: 0.7rem; border: 2px solid var(--ink); border-radius: var(--radius); font-family: var(--body); }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="app-nav">
+    <strong>bagr.</strong>
+    <div class="links">
+      <a href="timetable.html">Timetable</a>
+      <a href="items.html" class="active">Items</a>
+      <a href="today.html">Today</a>
+      <a href="#" onclick="signOut()">Sign out</a>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    <h1 style="font-size:1.8rem; margin-bottom:0.4rem;">Your items</h1>
+    <p class="label" style="margin-bottom:2rem;">flag it the moment it moves</p>
+
+    <div class="add-row">
+      <input id="new-item-input" placeholder="Add an item, e.g. Gym shoes">
+      <button class="btn" onclick="addItem()">Add</button>
+    </div>
+
+    <div id="item-list"><!-- populated by JS --></div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+<script>
+let session, items = [];
+
+async function init() {
+  session = await requireSession();
+  if (!session) return;
+  items = await fetchItems(session.user.id);
+  render();
+}
+
+function render() {
+  const list = document.getElementById('item-list');
+  if (!items.length) {
+    list.innerHTML = `<p class="label">No items yet — add one above, or add items while building your timetable.</p>`;
+    return;
+  }
+  list.innerHTML = items.map(item => `
+    <div class="item-row">
+      <span class="item-name">${item.name}</span>
+      <div class="toggle">
+        <button class="${item.location === 'home' ? 'active home' : ''}" onclick="setLoc(${item.id}, 'home')">Home</button>
+        <button class="${item.location === 'away' ? 'active away' : ''}" onclick="setLoc(${item.id}, 'away')">Away</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function setLoc(id, loc) {
+  await setItemLocation(id, loc);
+  items.find(i => i.id === id).location = loc;
+  render();
+}
+
+async function addItem() {
+  const input = document.getElementById('new-item-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const { data, error } = await supabase.from('items')
+    .insert({ user_id: session.user.id, name, location: 'home' })
+    .select().single();
+  if (error) { console.error(error); return; }
+  items.push(data);
+  input.value = '';
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

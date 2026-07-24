@@ -1,0 +1,105 @@
+/* ===== Bagr — design tokens ===== */
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --ink: #14181F;
+  --ink-soft: #1E242F;
+  --paper: #EDEAE0;
+  --paper-dim: #DEDACD;
+  --amber: #E8A93C;
+  --stamp: #C1462F;
+  --slate: #5B6472;
+  --line: rgba(20,24,31,0.14);
+  --line-on-ink: rgba(237,234,224,0.16);
+
+  --display: 'Archivo Black', 'Arial Black', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --body: 'Inter', system-ui, sans-serif;
+
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -0.01em; margin: 0; }
+.eyebrow, .manifest, .tag-mono { font-family: var(--mono); }
+
+a { color: inherit; }
+button { font-family: var(--body); cursor: pointer; }
+
+/* Perforated divider — ticket-stub motif */
+.perf {
+  border: none;
+  border-top: 2px dashed var(--slate);
+  opacity: 0.4;
+  margin: 0;
+}
+.perf-ink { border-top-color: var(--paper-dim); opacity: 0.35; }
+
+/* Diagonal hazard-stripe accent, used sparingly */
+.stripe {
+  background: repeating-linear-gradient(
+    -45deg, var(--amber), var(--amber) 10px, var(--ink) 10px, var(--ink) 20px
+  );
+  height: 6px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem;
+  border-radius: var(--radius);
+  border: 2px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn.outline { background: transparent; color: var(--ink); }
+.btn.amber { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+
+/* Focus visibility */
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* App shell (used by timetable/items/today) */
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.app-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1.1rem 1.5rem; border-bottom: 2px solid var(--ink);
+}
+.app-nav .links { display: flex; gap: 1.5rem; font-family: var(--mono); font-size: 0.85rem; }
+.app-nav .links a { text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
+.app-nav .links a.active, .app-nav .links a:hover { border-bottom-color: var(--amber); }
+.app-main { flex: 1; padding: 2rem 1.5rem 4rem; max-width: 880px; margin: 0 auto; width: 100%; }
+
+.card {
+  background: white;
+  border: 2px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--slate);
+}

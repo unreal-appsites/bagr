@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bagr — never repack from memory again</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .hero {
+    min-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3rem 1.5rem;
+    position: relative;
+  }
+  .hero-inner { max-width: 980px; margin: 0 auto; width: 100%; }
+  .eyebrow {
+    color: var(--stamp);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: 1rem;
+  }
+  h1.headline {
+    font-size: clamp(2.6rem, 7vw, 5.2rem);
+    line-height: 0.98;
+    margin-bottom: 1.5rem;
+  }
+  .headline .accent { color: var(--stamp); }
+  .sub {
+    max-width: 46ch;
+    font-size: 1.15rem;
+    color: var(--slate);
+    margin-bottom: 2.2rem;
+  }
+  .cta-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 3.5rem; }
+
+  /* Signature element: boarding-pass / manifest stub */
+  .stub {
+    background: var(--ink);
+    color: var(--paper);
+    border-radius: var(--radius);
+    display: flex;
+    max-width: 640px;
+    overflow: hidden;
+    box-shadow: 0 18px 40px rgba(20,24,31,0.25);
+  }
+  .stub-main { padding: 1.5rem 1.75rem; flex: 1; }
+  .stub-stub { width: 130px; padding: 1.5rem 1rem; border-left: 2px dashed var(--paper); display: flex; flex-direction: column; justify-content: space-between; }
+  .stub .label { color: var(--amber); }
+  .stub-day { font-family: var(--display); font-size: 1.4rem; margin: 0.3rem 0 0.9rem; }
+  .stub-items { font-family: var(--mono); font-size: 0.9rem; line-height: 1.9; list-style: none; padding: 0; margin: 0; }
+  .stub-items li::before { content: '— '; color: var(--amber); }
+  .stub-code { font-family: var(--mono); font-size: 0.7rem; color: var(--paper-dim); writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 0.1em; }
+
+  section.explain {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 5rem 1.5rem;
+  }
+  .explain-inner { max-width: 980px; margin: 0 auto; }
+  .explain h2 { font-size: clamp(1.8rem, 4vw, 2.6rem); max-width: 20ch; margin-bottom: 3rem; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
+  .step .num { font-family: var(--mono); color: var(--amber); font-size: 0.85rem; margin-bottom: 0.6rem; }
+  .step h3 { font-size: 1.3rem; margin-bottom: 0.6rem; }
+  .step p { color: var(--paper-dim); font-size: 0.95rem; line-height: 1.6; margin: 0; }
+  @media (max-width: 760px) {
+    .steps { grid-template-columns: 1fr; }
+    .stub { flex-direction: column; }
+    .stub-stub { border-left: none; border-top: 2px dashed var(--paper); flex-direction: row; width: auto; }
+    .stub-code { writing-mode: horizontal-tb; }
+  }
+
+  footer {
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--slate);
+  }
+</style>
+</head>
+<body>
+
+<div class="stripe"></div>
+
+<section class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">manifest · packed / unpacked</div>
+    <h1 class="headline">Stop repacking<br>from <span class="accent">memory.</span></h1>
+    <p class="sub">Bagr tracks what's actually at home versus what's still at school or work — and tells you exactly what to grab, the night before you need it.</p>
+    <div class="cta-row">
+      <a class="btn amber" href="login.html">Get started</a>
+      <a class="btn outline" href="#how">See how it works</a>
+    </div>
+
+    <div class="stub">
+      <div class="stub-main">
+        <div class="label">tomorrow requires</div>
+        <div class="stub-day">Chemistry — Period 3</div>
+        <ul class="stub-items">
+          <li>Calculator</li>
+          <li>Lab coat</li>
+          <li>Textbook (Ch. 4–6)</li>
+        </ul>
+      </div>
+      <div class="stub-stub">
+        <div class="stub-code">BAGR · TUE</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="explain" id="how">
+  <div class="explain-inner">
+    <h2>Your stuff, split between two places. Bagr closes the gap.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h3>Set your timetable</h3>
+        <p>Add the recurring classes, shifts, or sessions you go to — and what each one requires.</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h3>Mark items as you move them</h3>
+        <p>When something leaves your bag or comes home, flag it. Bagr keeps score.</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h3>Get tonight's pack list</h3>
+        <p>Bagr cross-checks tomorrow's timetable against what's home and pushes a reminder before you forget.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>Bagr — built for the stuff that lives in two places at once.</footer>
+
+</body>
+</html>

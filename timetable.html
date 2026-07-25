@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Timetable — Bagr</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  .day-col h2 { font-family: var(--mono); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate); margin-bottom: 0.75rem; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1rem; }
+  @media (max-width: 900px) { .week-grid { grid-template-columns: 1fr; } }
+  .slot { border: 2px solid var(--ink); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.75rem; background: white; }
+  .slot-label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; }
+  .slot-items { font-family: var(--mono); font-size: 0.75rem; color: var(--slate); }
+  .add-slot-btn { width: 100%; border: 2px dashed var(--slate); background: transparent; border-radius: var(--radius); padding: 0.6rem; font-size: 0.8rem; color: var(--slate); }
+  .add-slot-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(20,24,31,0.5); display: none; align-items: center; justify-content: center; padding: 1.5rem; z-index: 10; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius); padding: 1.75rem; max-width: 420px; width: 100%; }
+  .modal h3 { margin-bottom: 1rem; }
+  .modal label { display: block; font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase; margin: 1rem 0 0.4rem; color: var(--slate); }
+  .modal input, .modal select { width: 100%; padding: 0.6rem; border: 2px solid var(--ink); border-radius: var(--radius); font-family: var(--body); }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="app-nav">
+    <strong>bagr.</strong>
+    <div class="links">
+      <a href="timetable.html" class="active">Timetable</a>
+      <a href="items.html">Items</a>
+      <a href="today.html">Today</a>
+      <a href="#" onclick="signOut()">Sign out</a>
+    </div>
+  </nav>
+
+  <main class="app-main">
+    <h1 style="font-size:1.8rem; margin-bottom:0.4rem;">Your timetable</h1>
+    <p class="label" style="margin-bottom:2rem;">what recurs, and what it requires</p>
+
+    <div class="week-grid" id="week-grid"><!-- populated by JS --></div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <h3>New slot</h3>
+    <label for="slot-label-input">Label</label>
+    <input id="slot-label-input" placeholder="e.g. Chemistry — Period 3">
+    <label for="slot-items-input">Required items (comma separated)</label>
+    <input id="slot-items-input" placeholder="Calculator, Lab coat, Textbook">
+    <div class="modal-actions">
+      <button class="btn outline" onclick="closeModal()">Cancel</button>
+      <button class="btn amber" onclick="saveSlot()">Add slot</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+<script>
+let session, allSlots = [], allItems = [], activeDay = 0;
+
+async function init() {
+  session = await requireSession();
+  if (!session) return;
+  const userId = session.user.id;
+  [allSlots, allItems] = await Promise.all([fetchSlots(userId), fetchItems(userId)]);
+  render();
+}
+
+function render() {
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML = DAYS.map((day, idx) => `
+    <div class="day-col">
+      <h2>${day}</h2>
+      ${allSlots.filter(s => s.day_of_week === idx).map(slotHtml).join('')}
+      <button class="add-slot-btn" onclick="openModal(${idx})">+ Add slot</button>
+    </div>
+  `).join('');
+}
+
+function slotHtml(slot) {
+  const names = (slot.required_item_ids || [])
+    .map(id => allItems.find(i => i.id === id)?.name)
+    .filter(Boolean).join(', ') || 'No items set';
+  return `<div class="slot"><div class="slot-label">${slot.label}</div><div class="slot-items">${names}</div></div>`;
+}
+
+function openModal(dayIdx) {
+  activeDay = dayIdx;
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  document.getElementById('slot-label-input').value = '';
+  document.getElementById('slot-items-input').value = '';
+}
+
+async function saveSlot() {
+  const label = document.getElementById('slot-label-input').value.trim();
+  const itemNames = document.getElementById('slot-items-input').value.split(',').map(s => s.trim()).filter(Boolean);
+  if (!label) return;
+
+  // Upsert any new item names, collect ids
+  const itemIds = [];
+  for (const name of itemNames) {
+    let existing = allItems.find(i => i.name.toLowerCase() === name.toLowerCase());
+    if (!existing) {
+      const { data, error } = await sb.from('items')
+        .insert({ user_id: session.user.id, name, location: 'home' })
+        .select().single();
+      if (error) { console.error(error); continue; }
+      existing = data;
+      allItems.push(existing);
+    }
+    itemIds.push(existing.id);
+  }
+
+  const { data, error } = await sb.from('slots')
+    .insert({ user_id: session.user.id, day_of_week: activeDay, label, required_item_ids: itemIds })
+    .select().single();
+  if (error) { console.error(error); return; }
+  allSlots.push(data);
+  closeModal();
+  render();
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="96" fill="#14181F"/>
+  <text x="182" y="336"
+        font-family="Arial Black, Archivo Black, sans-serif"
+        font-weight="900"
+        font-size="260"
+        fill="#EDEAE0"
+        text-anchor="middle">b</text>
+  <circle cx="352" cy="316" r="22" fill="#E8A93C"/>
+</svg>

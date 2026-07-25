@@ -93,6 +93,11 @@
   <a class="back" href="index.html">← Back to Bagr</a>
 </div>
 
+<script>
+  window.onerror = function(msg, url, line, col, err) {
+    alert('JS ERROR: ' + msg + '\nLine: ' + line + '\nFile: ' + url);
+  };
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js"></script>
 <script>

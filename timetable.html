@@ -11,9 +11,26 @@
   .day-col h2 { font-family: var(--mono); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate); margin-bottom: 0.75rem; }
   .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1rem; }
   @media (max-width: 900px) { .week-grid { grid-template-columns: 1fr; } }
-  .slot { border: 2px solid var(--ink); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.75rem; background: white; }
-  .slot-label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.4rem; }
-  .slot-items { font-family: var(--mono); font-size: 0.75rem; color: var(--slate); }
+  .slot { border: 2px solid var(--ink); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.75rem; background: white; position: relative; }
+  .slot-label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; padding-right: 1.5rem; }
+  .slot-delete {
+    position: absolute; top: 0.5rem; right: 0.5rem;
+    background: none; border: none; color: var(--slate); font-size: 1rem;
+    line-height: 1; cursor: pointer; padding: 0.2rem;
+  }
+  .slot-delete:hover { color: var(--stamp); }
+  .slot-items { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+  .item-chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-family: var(--mono); font-size: 0.72rem; color: var(--ink);
+    background: var(--paper-dim); border-radius: 999px; padding: 0.2rem 0.5rem 0.2rem 0.6rem;
+  }
+  .item-chip button {
+    background: none; border: none; color: var(--slate); cursor: pointer;
+    font-size: 0.85rem; line-height: 1; padding: 0;
+  }
+  .item-chip button:hover { color: var(--stamp); }
+  .no-items { font-family: var(--mono); font-size: 0.75rem; color: var(--slate); }
   .add-slot-btn { width: 100%; border: 2px dashed var(--slate); background: transparent; border-radius: var(--radius); padding: 0.6rem; font-size: 0.8rem; color: var(--slate); }
   .add-slot-btn:hover { border-color: var(--ink); color: var(--ink); }
 
@@ -78,10 +95,39 @@ function render() {
 }
 
 function slotHtml(slot) {
-  const names = (slot.required_item_ids || [])
-    .map(id => allItems.find(i => i.id === id)?.name)
-    .filter(Boolean).join(', ') || 'No items set';
-  return `<div class="slot"><div class="slot-label">${slot.label}</div><div class="slot-items">${names}</div></div>`;
+  const chips = (slot.required_item_ids || [])
+    .map(id => allItems.find(i => i.id === id))
+    .filter(Boolean)
+    .map(item => `
+      <span class="item-chip">
+        ${item.name}
+        <button onclick="removeItemFromSlot(${slot.id}, ${item.id})" aria-label="Remove ${item.name}">&times;</button>
+      </span>`)
+    .join('');
+  return `
+    <div class="slot">
+      <button class="slot-delete" onclick="deleteSlot(${slot.id})" aria-label="Delete slot">&times;</button>
+      <div class="slot-label">${slot.label}</div>
+      <div class="slot-items">${chips || '<span class="no-items">No items set</span>'}</div>
+    </div>`;
+}
+
+async function deleteSlot(slotId) {
+  if (!confirm('Delete this slot?')) return;
+  const { error } = await sb.from('slots').delete().eq('id', slotId);
+  if (error) { console.error(error); return; }
+  allSlots = allSlots.filter(s => s.id !== slotId);
+  render();
+}
+
+async function removeItemFromSlot(slotId, itemId) {
+  const slot = allSlots.find(s => s.id === slotId);
+  if (!slot) return;
+  const newIds = (slot.required_item_ids || []).filter(id => id !== itemId);
+  const { error } = await sb.from('slots').update({ required_item_ids: newIds }).eq('id', slotId);
+  if (error) { console.error(error); return; }
+  slot.required_item_ids = newIds;
+  render();
 }
 
 function openModal(dayIdx) {

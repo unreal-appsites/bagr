@@ -32,6 +32,16 @@ async function sendMagicLink(email) {
   return error;
 }
 
+async function signInWithPassword(email, password) {
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  return error;
+}
+
+async function signUpWithPassword(email, password) {
+  const { error } = await sb.auth.signUp({ email, password });
+  return error;
+}
+
 async function signOut() {
   await sb.auth.signOut();
   window.location.href = 'index.html';

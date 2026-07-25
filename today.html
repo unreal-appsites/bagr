@@ -6,6 +6,11 @@
 <title>Today — Bagr</title>
 <link rel="apple-touch-icon" href="logo-180.png">
 <link rel="icon" href="logo-32.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bagr">
+<meta name="theme-color" content="#171B24">
 <link rel="stylesheet" href="shared.css">
 <style>
   .stub {
@@ -57,6 +62,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js?v=2"></script>
 <script>
+const VAPID_PUBLIC_KEY = 'BK_R-3kGaNHd-APrGqj8mrT-Y8xrfGMgjZSx_i7sjf2fyCr6LeppvrR__D6dcsuPHO_bQgJgLdIqyFQPb2VOqQk';
 let session, slots = [], items = [];
 
 async function init() {
@@ -138,13 +144,25 @@ async function enableNotifications() {
   reflectNotifPermission();
   if (permission !== 'granted') return;
 
-  // Register service worker + subscribe to push.
-  // Requires VAPID keys + a sw.js — see README for setup.
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.register('sw.js');
-    // const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: VAPID_PUBLIC_KEY });
-    // await sb.from('push_subscriptions').upsert({ user_id: session.user.id, subscription: sub });
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await sb.from('push_subscriptions').upsert({
+      user_id: session.user.id,
+      subscription: sub.toJSON()
+    });
   }
+}
+
+// Converts the VAPID public key into the byte format pushManager.subscribe expects
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
 init();

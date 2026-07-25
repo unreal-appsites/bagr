@@ -47,15 +47,39 @@ Then drop your project URL + anon key into `shared.js` (`SUPABASE_URL`, `SUPABAS
 
 **Magic link** — no setup required beyond having email/password auth enabled in Supabase (it is by default). Supabase sends the link using its built-in email service. For production volume, swap in your own SMTP under Authentication → Settings → SMTP Settings, since the default sender has low rate limits.
 
-## 3. Push notifications
+## 3. Push notifications (VAPID keys generated already)
 
-1. Generate VAPID keys (e.g. `npx web-push generate-vapid-keys`).
-2. Put the public key in `today.html` where `applicationServerKey` is commented out, uncomment that block.
-3. Store the private key server-side (Supabase Edge Function secret).
-4. Write a scheduled Edge Function (cron, e.g. nightly at 7pm) that:
-   - Reads each user's tomorrow's slots + item locations
-   - Builds the "what's missing" list (same logic as `itemsNeededForDay` in `shared.js`)
-   - Sends a push via `web-push` to each subscription in `push_subscriptions`
+**Public key** is already wired into `today.html`. **Private key** must never go in frontend code — it lives in Supabase as a secret.
+
+**Deploy the Edge Function:**
+```bash
+npx supabase login
+npx supabase link --project-ref dqorsxfqokzuwmuwipov
+npx supabase functions deploy send-reminders
+```
+
+**Set secrets** (Supabase dashboard → Edge Functions → send-reminders → Secrets, or via CLI):
+```bash
+npx supabase secrets set VAPID_PUBLIC_KEY=BK_R-3kGaNHd-APrGqj8mrT-Y8xrfGMgjZSx_i7sjf2fyCr6LeppvrR__D6dcsuPHO_bQgJgLdIqyFQPb2VOqQk
+npx supabase secrets set VAPID_PRIVATE_KEY=SimNmxLp-YSDTeJlSQ-gV6gR7avYA-L_N7Sn0cK2jTo
+```
+(`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically — no need to set those.)
+
+**Schedule it nightly** — Supabase dashboard → Database → Cron Jobs → New job:
+```sql
+select cron.schedule(
+  'bagr-nightly-reminders',
+  '0 19 * * *', -- 7pm UTC daily, adjust to your timezone
+  $$
+  select net.http_post(
+    url := 'https://dqorsxfqokzuwmuwipov.supabase.co/functions/v1/send-reminders',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || 'YOUR_SERVICE_ROLE_KEY')
+  );
+  $$
+);
+```
+
+The function reads everyone's `push_subscriptions`, checks tomorrow's slots against what's still marked "home," and sends a push only if something's actually missing — no nag if you're already packed.
 
 ## 4. Deploy
 

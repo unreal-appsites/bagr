@@ -1,0 +1,14 @@
+{
+  "name": "Bagr",
+  "short_name": "Bagr",
+  "description": "Your week, in one bag.",
+  "start_url": "today.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3EFE6",
+  "theme_color": "#171B24",
+  "icons": [
+    { "src": "logo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "logo-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

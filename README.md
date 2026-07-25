@@ -24,7 +24,8 @@ create table slots (
 
 create table push_subscriptions (
   user_id uuid references auth.users primary key,
-  subscription jsonb not null
+  subscription jsonb not null,
+  notify_hour int not null default 19 -- hour in UTC (0-23) to send the nightly reminder
 );
 
 alter table items enable row level security;
@@ -37,6 +38,11 @@ create policy "own push sub" on push_subscriptions for all using (auth.uid() = u
 ```
 
 Then drop your project URL + anon key into `shared.js` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`).
+
+**Already ran this schema before adding notify_hour?** Just run this one line instead of recreating the table:
+```sql
+alter table push_subscriptions add column notify_hour int not null default 19;
+```
 
 ## 2. Login — GitHub + magic link
 
@@ -65,11 +71,11 @@ npx supabase secrets set VAPID_PRIVATE_KEY=SimNmxLp-YSDTeJlSQ-gV6gR7avYA-L_N7Sn0
 ```
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically — no need to set those.)
 
-**Schedule it nightly** — Supabase dashboard → Database → Cron Jobs → New job:
+**Schedule it hourly** — since each user now picks their own reminder time (stored as `notify_hour`, in UTC), the function needs to run every hour and only sends to whoever's chosen hour matches right now. Supabase dashboard → Integrations → Cron → Create job:
 ```sql
 select cron.schedule(
-  'bagr-nightly-reminders',
-  '0 19 * * *', -- 7pm UTC daily, adjust to your timezone
+  'bagr-hourly-reminder-check',
+  '0 * * * *', -- every hour, on the hour
   $$
   select net.http_post(
     url := 'https://dqorsxfqokzuwmuwipov.supabase.co/functions/v1/send-reminders',
@@ -79,7 +85,7 @@ select cron.schedule(
 );
 ```
 
-The function reads everyone's `push_subscriptions`, checks tomorrow's slots against what's still marked "home," and sends a push only if something's actually missing — no nag if you're already packed.
+The function checks the current UTC hour, finds subscriptions matching that `notify_hour`, then checks tomorrow's slots against what's still marked "home" for just those users — no push if nothing's missing.
 
 ## 4. Deploy
 

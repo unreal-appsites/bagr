@@ -49,10 +49,15 @@
 
     <div class="card notif-card">
       <span class="bell">🔔</span>
-      <div>
+      <div style="flex:1;">
         <h3>A gentler reminder</h3>
-        <p>Enable browser notifications and Bagr can tap you on the evening before something's due.</p>
-        <button class="btn outline" id="enable-notif-btn" onclick="enableNotifications()">Enable notifications</button>
+        <p>Enable browser notifications and pick when Bagr should tap you if something's missing for tomorrow.</p>
+        <label for="notif-time" class="label" style="display:block; margin-bottom:0.4rem;">Remind me at</label>
+        <select id="notif-time" style="padding:0.6rem; border:2px solid var(--ink); border-radius:var(--radius); font-family:var(--body); margin-bottom:1rem;"></select>
+        <div>
+          <button class="btn outline" id="enable-notif-btn" onclick="enableNotifications()">Enable notifications</button>
+          <button class="btn amber" id="update-time-btn" style="display:none;" onclick="updateNotifTime()">Save time</button>
+        </div>
         <div id="notif-status"></div>
       </div>
     </div>
@@ -72,7 +77,33 @@ async function init() {
   const userId = session.user.id;
   [slots, items] = await Promise.all([fetchSlots(userId), fetchItems(userId)]);
   render();
-  reflectNotifPermission();
+  populateTimeOptions();
+  await reflectNotifPermission();
+}
+
+function populateTimeOptions() {
+  const select = document.getElementById('notif-time');
+  const opts = [];
+  for (let h = 0; h < 24; h++) {
+    const d = new Date();
+    d.setHours(h, 0, 0, 0);
+    const label = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    opts.push(`<option value="${h}">${label}</option>`);
+  }
+  select.innerHTML = opts.join('');
+  select.value = 19; // default 7pm local until we know otherwise
+}
+
+function localHourToUtcHour(localHour) {
+  const d = new Date();
+  d.setHours(localHour, 0, 0, 0);
+  return d.getUTCHours();
+}
+
+function utcHourToLocalHour(utcHour) {
+  const d = new Date();
+  d.setUTCHours(utcHour, 0, 0, 0);
+  return d.getHours();
 }
 
 function render() {
@@ -122,27 +153,43 @@ function render() {
   }).join('');
 }
 
-function reflectNotifPermission() {
+async function reflectNotifPermission() {
   const status = document.getElementById('notif-status');
-  const btn = document.getElementById('enable-notif-btn');
+  const enableBtn = document.getElementById('enable-notif-btn');
+  const updateBtn = document.getElementById('update-time-btn');
+  const select = document.getElementById('notif-time');
+
   if (!('Notification' in window)) {
     status.textContent = 'Notifications aren\'t supported in this browser.';
-    btn.style.display = 'none';
+    enableBtn.style.display = 'none';
     return;
   }
-  if (Notification.permission === 'granted') {
-    status.textContent = '✓ Notifications enabled.';
-    btn.style.display = 'none';
-  } else if (Notification.permission === 'denied') {
+
+  if (Notification.permission === 'denied') {
     status.textContent = 'Blocked — enable notifications for this site in your browser settings.';
-    btn.style.display = 'none';
+    enableBtn.style.display = 'none';
+    return;
+  }
+
+  if (Notification.permission === 'granted') {
+    // Already granted — check if we actually have a saved subscription + time
+    const { data: existing } = await sb.from('push_subscriptions')
+      .select('notify_hour').eq('user_id', session.user.id).maybeSingle();
+    if (existing) {
+      select.value = utcHourToLocalHour(existing.notify_hour);
+      enableBtn.style.display = 'none';
+      updateBtn.style.display = '';
+      status.textContent = '✓ Notifications enabled.';
+      return;
+    }
+    // Permission granted but never actually subscribed (e.g. cleared DB) — let them (re)subscribe
+    enableBtn.textContent = 'Save & subscribe';
   }
 }
 
 async function enableNotifications() {
   const permission = await Notification.requestPermission();
-  reflectNotifPermission();
-  if (permission !== 'granted') return;
+  if (permission !== 'granted') { reflectNotifPermission(); return; }
 
   if ('serviceWorker' in navigator) {
     const reg = await navigator.serviceWorker.register('sw.js');
@@ -150,11 +197,23 @@ async function enableNotifications() {
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
     });
+    const localHour = parseInt(document.getElementById('notif-time').value, 10);
     await sb.from('push_subscriptions').upsert({
       user_id: session.user.id,
-      subscription: sub.toJSON()
+      subscription: sub.toJSON(),
+      notify_hour: localHourToUtcHour(localHour)
     });
   }
+  reflectNotifPermission();
+}
+
+async function updateNotifTime() {
+  const status = document.getElementById('notif-status');
+  const localHour = parseInt(document.getElementById('notif-time').value, 10);
+  const { error } = await sb.from('push_subscriptions')
+    .update({ notify_hour: localHourToUtcHour(localHour) })
+    .eq('user_id', session.user.id);
+  status.textContent = error ? `Error: ${error.message}` : '✓ Reminder time updated.';
 }
 
 // Converts the VAPID public key into the byte format pushManager.subscribe expects

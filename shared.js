@@ -20,14 +20,14 @@ async function requireSession(redirectTo = 'login.html') {
 async function signInWithGithub() {
   await sb.auth.signInWithOAuth({
     provider: 'github',
-    options: { redirectTo: window.location.origin + '/today.html' }
+    options: { redirectTo: new URL('today.html', window.location.href).href }
   });
 }
 
 async function sendMagicLink(email) {
   const { error } = await sb.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: window.location.origin + '/today.html' }
+    options: { emailRedirectTo: new URL('today.html', window.location.href).href }
   });
   return error;
 }

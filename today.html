@@ -4,63 +4,65 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Today — Bagr</title>
+<link rel="apple-touch-icon" href="logo-180.png">
+<link rel="icon" href="logo-32.png">
 <link rel="stylesheet" href="shared.css">
 <style>
   .stub {
     background: var(--ink); color: var(--paper); border-radius: var(--radius);
     display: flex; max-width: 640px; overflow: hidden;
-    box-shadow: 0 18px 40px rgba(20,24,31,0.2); margin-bottom: 2rem;
+    box-shadow: 0 18px 40px rgba(23,27,36,0.2); margin-bottom: 1.5rem;
   }
   .stub-main { padding: 1.5rem 1.75rem; flex: 1; }
   .stub-stub { width: 130px; padding: 1.5rem 1rem; border-left: 2px dashed var(--paper); display: flex; align-items: center; justify-content: center; }
   .stub .label { color: var(--amber); }
-  .stub-day { font-family: var(--display); font-size: 1.4rem; margin: 0.3rem 0 0.9rem; }
+  .stub-day { font-family: var(--display); font-weight: 700; font-size: 1.4rem; margin: 0.3rem 0 0.9rem; }
   .pack-item { display: flex; align-items: center; gap: 0.6rem; font-family: var(--mono); font-size: 0.9rem; padding: 0.3rem 0; }
   .pack-item.have { text-decoration: line-through; opacity: 0.5; }
   .dot-missing { width: 8px; height: 8px; border-radius: 50%; background: var(--stamp); flex-shrink: 0; }
   .dot-have { width: 8px; height: 8px; border-radius: 50%; background: #4d7c4a; flex-shrink: 0; }
-  .empty-state { color: var(--slate); }
 
-  .notif-card { max-width: 640px; }
-  .notif-card p { color: var(--slate); font-size: 0.9rem; margin: 0.5rem 0 1rem; }
+  .empty-state { max-width: 640px; margin-bottom: 1.5rem; }
+
+  .notif-card { max-width: 640px; display: flex; gap: 0.9rem; align-items: flex-start; }
+  .notif-card .bell { font-size: 1.2rem; }
+  .notif-card h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
+  .notif-card p { color: var(--slate); font-size: 0.9rem; margin: 0 0 1rem; }
   #notif-status { font-family: var(--mono); font-size: 0.8rem; margin-top: 0.75rem; }
 </style>
 </head>
 <body>
 <div class="app-shell">
-  <nav class="app-nav">
-    <strong>bagr.</strong>
-    <div class="links">
-      <a href="timetable.html">Timetable</a>
-      <a href="items.html">Items</a>
-      <a href="today.html" class="active">Today</a>
-      <a href="#" onclick="signOut()">Sign out</a>
-    </div>
-  </nav>
+  <nav class="app-nav"></nav>
 
   <main class="app-main">
-    <h1 style="font-size:1.8rem; margin-bottom:0.4rem;">What you need next</h1>
-    <p class="label" style="margin-bottom:2rem;">cross-checked against what's home right now</p>
+    <p class="label" style="margin-bottom:0.6rem;">Next departure</p>
+    <h1 style="font-size:2.1rem; margin-bottom:0.5rem;">What you need next</h1>
+    <p style="color:var(--slate); margin-bottom:2rem;">Cross-checked against what's home right now.</p>
 
     <div id="stub-container"><!-- populated by JS --></div>
 
     <div class="card notif-card">
-      <h3 style="font-size:1.1rem;">Reminders</h3>
-      <p>Get a browser notification the evening before something's due, so this page doesn't have to be a habit.</p>
-      <button class="btn amber" id="enable-notif-btn" onclick="enableNotifications()">Enable notifications</button>
-      <div id="notif-status"></div>
+      <span class="bell">🔔</span>
+      <div>
+        <h3>A gentler reminder</h3>
+        <p>Enable browser notifications and Bagr can tap you on the evening before something's due.</p>
+        <button class="btn outline" id="enable-notif-btn" onclick="enableNotifications()">Enable notifications</button>
+        <div id="notif-status"></div>
+      </div>
     </div>
   </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="shared.js"></script>
+<script src="shared.js?v=2"></script>
 <script>
 let session, slots = [], items = [];
 
 async function init() {
   session = await requireSession();
   if (!session) return;
+  renderDrawerNav('today');
   const userId = session.user.id;
   [slots, items] = await Promise.all([fetchSlots(userId), fetchItems(userId)]);
   render();
@@ -80,7 +82,13 @@ function render() {
   }
 
   if (!upcoming.length) {
-    container.innerHTML = `<p class="empty-state">No upcoming slots yet — build out your <a href="timetable.html">timetable</a> to see pack lists here.</p>`;
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📦</div>
+        <h3>Your week is still open.</h3>
+        <p>Build out your timetable and the next things to pack will appear here.</p>
+        <a class="btn" href="timetable.html">Build timetable →</a>
+      </div>`;
     return;
   }
 

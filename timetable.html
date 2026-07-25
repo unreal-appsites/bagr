@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Timetable — Bagr</title>
+<link rel="apple-touch-icon" href="logo-180.png">
+<link rel="icon" href="logo-32.png">
 <link rel="stylesheet" href="shared.css">
 <style>
   .day-col h2 { font-family: var(--mono); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate); margin-bottom: 0.75rem; }
@@ -26,15 +28,7 @@
 </head>
 <body>
 <div class="app-shell">
-  <nav class="app-nav">
-    <strong>bagr.</strong>
-    <div class="links">
-      <a href="timetable.html" class="active">Timetable</a>
-      <a href="items.html">Items</a>
-      <a href="today.html">Today</a>
-      <a href="#" onclick="signOut()">Sign out</a>
-    </div>
-  </nav>
+  <nav class="app-nav"></nav>
 
   <main class="app-main">
     <h1 style="font-size:1.8rem; margin-bottom:0.4rem;">Your timetable</h1>
@@ -59,13 +53,14 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="shared.js"></script>
+<script src="shared.js?v=2"></script>
 <script>
 let session, allSlots = [], allItems = [], activeDay = 0;
 
 async function init() {
   session = await requireSession();
   if (!session) return;
+  renderDrawerNav('timetable');
   const userId = session.user.id;
   [allSlots, allItems] = await Promise.all([fetchSlots(userId), fetchItems(userId)]);
   render();

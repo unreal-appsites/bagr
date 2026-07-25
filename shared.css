@@ -1,22 +1,22 @@
 /* ===== Bagr — design tokens ===== */
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --ink: #14181F;
-  --ink-soft: #1E242F;
-  --paper: #EDEAE0;
-  --paper-dim: #DEDACD;
-  --amber: #E8A93C;
+  --ink: #171B24;
+  --ink-soft: #212633;
+  --paper: #F3EFE6;
+  --paper-dim: #E5E0D2;
+  --amber: #E8A33C;
   --stamp: #C1462F;
-  --slate: #5B6472;
-  --line: rgba(20,24,31,0.14);
-  --line-on-ink: rgba(237,234,224,0.16);
+  --slate: #6B7280;
+  --line: rgba(23,27,36,0.14);
+  --line-on-ink: rgba(243,239,230,0.16);
 
-  --display: 'Archivo Black', 'Arial Black', sans-serif;
+  --display: 'Fraunces', Georgia, serif;
   --mono: 'IBM Plex Mono', ui-monospace, monospace;
   --body: 'Inter', system-ui, sans-serif;
 
-  --radius: 6px;
+  --radius: 10px;
 }
 
 * { box-sizing: border-box; }
@@ -29,7 +29,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1, h2, h3 { font-family: var(--display); font-weight: 400; letter-spacing: -0.01em; margin: 0; }
+h1, h2, h3 { font-family: var(--display); font-weight: 700; letter-spacing: -0.01em; margin: 0; }
 .eyebrow, .manifest, .tag-mono { font-family: var(--mono); }
 
 a { color: inherit; }
@@ -81,12 +81,55 @@ button { font-family: var(--body); cursor: pointer; }
 /* App shell (used by timetable/items/today) */
 .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
 .app-nav {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 1.1rem 1.5rem; border-bottom: 2px solid var(--ink);
+  display: grid; grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: 1.1rem 1.25rem; border-bottom: 2px solid var(--ink);
+  background: var(--paper);
+  position: sticky; top: 0; z-index: 5;
 }
-.app-nav .links { display: flex; gap: 1.5rem; font-family: var(--mono); font-size: 0.85rem; }
-.app-nav .links a { text-decoration: none; padding-bottom: 2px; border-bottom: 2px solid transparent; }
-.app-nav .links a.active, .app-nav .links a:hover { border-bottom-color: var(--amber); }
+.app-nav .logo-mark {
+  font-family: var(--display); font-weight: 700; font-size: 1.4rem;
+  text-align: center; text-decoration: none; color: var(--ink);
+}
+.app-nav .logo-mark .dot { color: var(--amber); }
+.hamburger {
+  background: none; border: none; padding: 0.4rem;
+  display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+}
+.hamburger span { width: 20px; height: 2px; background: var(--ink); display: block; }
+
+.drawer-overlay {
+  position: fixed; inset: 0; background: rgba(23,27,36,0.35);
+  opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 20;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+.drawer {
+  position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
+  background: var(--ink); color: var(--paper);
+  transform: translateX(-100%); transition: transform 0.25s ease;
+  z-index: 21; padding: 1.5rem 1.25rem;
+}
+.drawer.open { transform: translateX(0); }
+.drawer-close {
+  background: none; border: none; color: var(--paper); font-size: 1.4rem;
+  position: absolute; top: 1.3rem; right: 1.25rem; cursor: pointer; line-height: 1;
+}
+.drawer-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-bottom: 2.5rem; }
+.drawer-label {
+  font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--paper-dim); margin-bottom: 1rem;
+}
+.drawer-link {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.85rem 1rem; border-radius: var(--radius);
+  color: var(--paper); text-decoration: none; font-weight: 600; font-size: 0.95rem;
+  margin-bottom: 0.4rem;
+}
+.drawer-link svg { flex-shrink: 0; }
+.drawer-link.active { background: var(--amber); color: var(--ink); }
+.drawer-link:not(.active):hover { background: var(--ink-soft); }
+
 .app-main { flex: 1; padding: 2rem 1.5rem 4rem; max-width: 880px; margin: 0 auto; width: 100%; }
 
 .card {
@@ -95,6 +138,16 @@ button { font-family: var(--body); cursor: pointer; }
   border-radius: var(--radius);
   padding: 1.25rem;
 }
+
+.empty-state {
+  border: 2px dashed var(--slate);
+  border-radius: var(--radius);
+  padding: 2.5rem 1.75rem;
+  text-align: center;
+}
+.empty-state .icon { font-size: 2rem; margin-bottom: 1rem; }
+.empty-state h3 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+.empty-state p { color: var(--slate); margin-bottom: 1.5rem; }
 
 .label {
   font-family: var(--mono);

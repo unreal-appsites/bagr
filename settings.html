@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settings — Bagr</title>
+<link rel="apple-touch-icon" href="logo-180.png">
+<link rel="icon" href="logo-32.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bagr">
+<meta name="theme-color" content="#171B24">
+<link rel="stylesheet" href="shared.css">
+<style>
+  .settings-section { max-width: 480px; margin-bottom: 2rem; }
+  .settings-section h2 { font-size: 1.2rem; margin-bottom: 0.4rem; }
+  .settings-section > p { color: var(--slate); font-size: 0.9rem; margin-bottom: 1.25rem; }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .toggle-row span { font-weight: 600; font-size: 0.95rem; }
+  .switch { position: relative; width: 46px; height: 26px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch-track {
+    position: absolute; inset: 0; background: var(--paper-dim); border: 2px solid var(--ink);
+    border-radius: 999px; cursor: pointer; transition: background 0.15s ease;
+  }
+  .switch-track::before {
+    content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+    background: var(--ink); border-radius: 50%; transition: transform 0.15s ease;
+  }
+  .switch input:checked + .switch-track { background: var(--amber); }
+  .switch input:checked + .switch-track::before { transform: translateX(18px); }
+
+  .week-fields { display: none; margin-top: 1rem; }
+  .week-fields.open { display: block; }
+  .week-fields label { display: block; font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; color: var(--slate); margin-bottom: 0.4rem; }
+  .week-fields select { width: 100%; padding: 0.6rem; border: 2px solid var(--ink); border-radius: var(--radius); font-family: var(--body); margin-bottom: 1.25rem; }
+  #save-status { font-family: var(--mono); font-size: 0.8rem; margin-top: 0.75rem; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="app-nav"></nav>
+
+  <main class="app-main">
+    <h1 style="font-size:1.8rem; margin-bottom:1.75rem;">Settings</h1>
+
+    <div class="card settings-section">
+      <h2>Rotating timetable</h2>
+      <p>If your school or work alternates between two weeks (Week A / Week B), turn this on so Bagr shows the right one.</p>
+
+      <div class="toggle-row">
+        <span>A/B weeks</span>
+        <label class="switch">
+          <input type="checkbox" id="ab-toggle" onchange="toggleWeekFields()">
+          <span class="switch-track"></span>
+        </label>
+      </div>
+
+      <div class="week-fields" id="week-fields">
+        <label for="week-letter">This week is currently...</label>
+        <select id="week-letter">
+          <option value="A">Week A</option>
+          <option value="B">Week B</option>
+        </select>
+      </div>
+
+      <button class="btn amber" onclick="saveSettings()">Save</button>
+      <div id="save-status"></div>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js?v=2"></script>
+<script>
+let session, profile;
+
+async function init() {
+  session = await requireSession();
+  if (!session) return;
+  renderDrawerNav('settings');
+  profile = await fetchProfile(session.user.id);
+
+  if (profile && profile.has_ab_weeks) {
+    document.getElementById('ab-toggle').checked = true;
+    document.getElementById('week-fields').classList.add('open');
+    // Show today's currently-computed week as the default selection
+    const current = weekLetterForDate(profile, new Date());
+    if (current) document.getElementById('week-letter').value = current;
+  }
+}
+
+function toggleWeekFields() {
+  const on = document.getElementById('ab-toggle').checked;
+  document.getElementById('week-fields').classList.toggle('open', on);
+}
+
+async function saveSettings() {
+  const status = document.getElementById('save-status');
+  const hasAbWeeks = document.getElementById('ab-toggle').checked;
+  const fields = { onboarded: true, has_ab_weeks: hasAbWeeks };
+  if (hasAbWeeks) {
+    fields.ab_reference_date = new Date().toISOString().slice(0, 10);
+    fields.ab_reference_week = document.getElementById('week-letter').value;
+  }
+  try {
+    await saveProfile(session.user.id, fields);
+    status.textContent = '✓ Saved.';
+  } catch (err) {
+    status.textContent = `Error: ${err.message}`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>

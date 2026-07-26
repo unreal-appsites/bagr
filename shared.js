@@ -6,6 +6,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_VJHdqDmN3SMZilRU8olqqg_28AxAtbL';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const BAG_COLORS = ['#E8A33C', '#C1462F', '#4d7c4a', '#5B7CA8', '#8C5BA8'];
 
 // ---- Auth ----
 async function requireSession(redirectTo = 'login.html') {
@@ -47,6 +48,79 @@ async function signOut() {
   window.location.href = 'index.html';
 }
 
+// ---- Data: profile / A-B week tracking ----
+async function fetchProfile(userId) {
+  const { data, error } = await sb.from('profiles').select('*').eq('user_id', userId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+async function saveProfile(userId, fields) {
+  const { error } = await sb.from('profiles').upsert({ user_id: userId, ...fields });
+  if (error) throw error;
+}
+
+// Given a profile with ab_reference_date/ab_reference_week, and a target date,
+// returns 'A' or 'B' for that date. Weeks flip every 7 days from the reference.
+function weekLetterForDate(profile, date) {
+  if (!profile || !profile.has_ab_weeks || !profile.ab_reference_date) return null;
+  const ref = new Date(profile.ab_reference_date + 'T00:00:00');
+  const target = new Date(date);
+  ref.setHours(0,0,0,0);
+  target.setHours(0,0,0,0);
+  const dayMs = 24 * 60 * 60 * 1000;
+  const weeksBetween = Math.floor((target - ref) / (7 * dayMs));
+  const flips = ((weeksBetween % 2) + 2) % 2; // handle negative mod
+  const letters = ['A', 'B'];
+  const refIdx = letters.indexOf(profile.ab_reference_week);
+  return letters[(refIdx + flips) % 2];
+}
+
+// ---- Data: slot skips ----
+async function fetchSkips(userId) {
+  const { data, error } = await sb.from('slot_skips').select('*').eq('user_id', userId);
+  if (error) throw error;
+  return data;
+}
+
+async function skipSlotOnDate(userId, slotId, dateStr) {
+  const { error } = await sb.from('slot_skips')
+    .upsert({ user_id: userId, slot_id: slotId, skip_date: dateStr }, { onConflict: 'slot_id,skip_date' });
+  if (error) throw error;
+}
+
+async function unskipSlotOnDate(slotId, dateStr) {
+  const { error } = await sb.from('slot_skips').delete().eq('slot_id', slotId).eq('skip_date', dateStr);
+  if (error) throw error;
+}
+
+function isSlotSkipped(skips, slotId, dateStr) {
+  return skips.some(s => s.slot_id === slotId && s.skip_date === dateStr);
+}
+
+// ---- Data: bags ----
+async function fetchBags(userId) {
+  const { data, error } = await sb.from('bags').select('*').eq('user_id', userId).order('name');
+  if (error) throw error;
+  return data;
+}
+
+async function createBag(userId, name, color) {
+  const { data, error } = await sb.from('bags').insert({ user_id: userId, name, color }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function deleteBag(bagId) {
+  const { error } = await sb.from('bags').delete().eq('id', bagId);
+  if (error) throw error;
+}
+
+async function setItemBag(itemId, bagId) {
+  const { error } = await sb.from('items').update({ bag_id: bagId }).eq('id', itemId);
+  if (error) throw error;
+}
+
 // ---- Data: items ----
 // items table: id, user_id, name, category, location ('home'|'away'), updated_at
 async function fetchItems(userId) {
@@ -80,8 +154,10 @@ async function fetchSlots(userId) {
 }
 
 // ---- Derived: what do I need for a given day ----
-function itemsNeededForDay(slots, items, dayIndex) {
-  const daySlots = slots.filter(s => s.day_of_week === dayIndex);
+function itemsNeededForDay(slots, items, dayIndex, weekLetter = null) {
+  const daySlots = slots.filter(s =>
+    s.day_of_week === dayIndex && (weekLetter === null || s.week === null || s.week === weekLetter)
+  );
   const neededIds = new Set(daySlots.flatMap(s => s.required_item_ids || []));
   return items.filter(i => neededIds.has(i.id));
 }

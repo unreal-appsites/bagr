@@ -13,17 +13,50 @@
 <meta name="theme-color" content="#171B24">
 <link rel="stylesheet" href="shared.css">
 <style>
+  .bags-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
+  .bag-chip {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    border: 2px solid var(--ink); border-radius: 999px;
+    padding: 0.4rem 0.5rem 0.4rem 0.7rem; font-size: 0.85rem; font-weight: 600;
+    background: white;
+  }
+  .bag-chip .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .bag-chip button {
+    background: none; border: none; color: var(--slate); cursor: pointer;
+    font-size: 0.9rem; line-height: 1; padding: 0;
+  }
+  .bag-chip button:hover { color: var(--stamp); }
+  .add-bag-row { display: flex; gap: 0.5rem; margin-bottom: 2rem; align-items: center; }
+  .add-bag-row input { padding: 0.5rem 0.75rem; border: 2px dashed var(--slate); border-radius: 999px; font-family: var(--body); font-size: 0.85rem; background: transparent; width: 160px; }
+  .add-bag-row input:focus { outline: none; border-color: var(--ink); }
+
+  .bag-group { margin-bottom: 1.75rem; }
+  .bag-group-header { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.75rem; }
+  .bag-group-header .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .bag-group-header h3 { font-size: 1rem; font-family: var(--body); font-weight: 700; }
+
   .item-row {
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
     padding: 0.9rem 1rem; border: 2px solid var(--ink); border-radius: var(--radius);
     background: white; margin-bottom: 0.75rem;
   }
-  .item-name { font-weight: 600; }
+  .item-name { font-weight: 600; flex: 1; }
+  .forgotten-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    font-family: var(--mono); font-size: 0.65rem; text-transform: uppercase;
+    color: var(--stamp); margin-left: 0.5rem;
+  }
+  .item-controls { display: flex; align-items: center; gap: 0.6rem; }
+  .bag-select {
+    font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase;
+    border: 2px solid var(--ink); border-radius: var(--radius); padding: 0.35rem 0.4rem;
+    background: white; max-width: 110px;
+  }
   .toggle { display: flex; border: 2px solid var(--ink); border-radius: var(--radius); overflow: hidden; font-family: var(--mono); font-size: 0.75rem; }
   .toggle button { border: none; background: white; padding: 0.5rem 0.9rem; text-transform: uppercase; }
   .toggle button.active.home { background: var(--amber); }
   .toggle button.active.away { background: var(--stamp); color: white; }
-  .add-row { display: flex; gap: 0.75rem; margin-bottom: 2rem; }
+  .add-row { display: flex; gap: 0.75rem; margin-bottom: 2.5rem; }
   .add-row input { flex: 1; padding: 0.7rem; border: 2px solid var(--ink); border-radius: var(--radius); font-family: var(--body); }
 </style>
 </head>
@@ -33,7 +66,14 @@
 
   <main class="app-main">
     <h1 style="font-size:1.8rem; margin-bottom:0.4rem;">Your items</h1>
-    <p class="label" style="margin-bottom:2rem;">flag it the moment it moves</p>
+    <p class="label" style="margin-bottom:1.5rem;">flag it the moment it moves</p>
+
+    <p class="label" style="margin-bottom:0.6rem;">Bags</p>
+    <div class="bags-row" id="bags-row"><!-- populated by JS --></div>
+    <div class="add-bag-row">
+      <input id="new-bag-input" placeholder="e.g. Gym bag" maxlength="30">
+      <button class="btn outline" onclick="addBag()" style="padding:0.5rem 1rem; font-size:0.85rem;">+ New bag</button>
+    </div>
 
     <div class="add-row">
       <input id="new-item-input" placeholder="Add an item, e.g. Gym shoes">
@@ -47,13 +87,50 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js?v=2"></script>
 <script>
-let session, items = [];
+let session, items = [], bags = [];
 
 async function init() {
   session = await requireSession();
   if (!session) return;
   renderDrawerNav('items');
-  items = await fetchItems(session.user.id);
+  [items, bags] = await Promise.all([fetchItems(session.user.id), fetchBags(session.user.id)]);
+  renderBags();
+  render();
+}
+
+function renderBags() {
+  const row = document.getElementById('bags-row');
+  if (!bags.length) {
+    row.innerHTML = `<span class="label">No bags yet — add one below.</span>`;
+    return;
+  }
+  row.innerHTML = bags.map(bag => `
+    <span class="bag-chip">
+      <span class="dot" style="background:${bag.color};"></span>
+      ${bag.name}
+      <button onclick="removeBag(${bag.id})" aria-label="Delete ${bag.name}">&times;</button>
+    </span>
+  `).join('');
+}
+
+async function addBag() {
+  const input = document.getElementById('new-bag-input');
+  const name = input.value.trim();
+  if (!name) return;
+  const color = BAG_COLORS[bags.length % BAG_COLORS.length];
+  const bag = await createBag(session.user.id, name, color);
+  bags.push(bag);
+  input.value = '';
+  renderBags();
+  render();
+}
+
+async function removeBag(bagId) {
+  if (!confirm('Delete this bag? Items stay, just unassigned.')) return;
+  await deleteBag(bagId);
+  bags = bags.filter(b => b.id !== bagId);
+  items.forEach(i => { if (i.bag_id === bagId) i.bag_id = null; });
+  renderBags();
   render();
 }
 
@@ -63,15 +140,48 @@ function render() {
     list.innerHTML = `<p class="label">No items yet — add one above, or add items while building your timetable.</p>`;
     return;
   }
-  list.innerHTML = items.map(item => `
-    <div class="item-row">
-      <span class="item-name">${item.name}</span>
-      <div class="toggle">
-        <button class="${item.location === 'home' ? 'active home' : ''}" onclick="setLoc(${item.id}, 'home')">Home</button>
-        <button class="${item.location === 'away' ? 'active away' : ''}" onclick="setLoc(${item.id}, 'away')">Away</button>
+
+  const sortByMissed = (a, b) => (b.missed_count || 0) - (a.missed_count || 0);
+  const groups = bags.map(bag => ({ bag, items: items.filter(i => i.bag_id === bag.id).sort(sortByMissed) }));
+  const unassigned = items.filter(i => !i.bag_id || !bags.find(b => b.id === i.bag_id)).sort(sortByMissed);
+  if (unassigned.length) groups.push({ bag: null, items: unassigned });
+
+  list.innerHTML = groups.filter(g => g.items.length).map(g => `
+    <div class="bag-group">
+      <div class="bag-group-header">
+        <span class="dot" style="background:${g.bag ? g.bag.color : 'var(--slate)'};"></span>
+        <h3>${g.bag ? g.bag.name : 'Unassigned'}</h3>
       </div>
+      ${g.items.map(itemRowHtml).join('')}
     </div>
   `).join('');
+}
+
+function itemRowHtml(item) {
+  const bagOptions = ['<option value="">No bag</option>']
+    .concat(bags.map(b => `<option value="${b.id}" ${item.bag_id === b.id ? 'selected' : ''}>${b.name}</option>`));
+  const badge = item.missed_count >= 3
+    ? `<span class="forgotten-badge">🔥 Often forgotten</span>`
+    : '';
+  return `
+    <div class="item-row">
+      <span class="item-name">${item.name}${badge}</span>
+      <div class="item-controls">
+        <select class="bag-select" onchange="changeBag(${item.id}, this.value)">${bagOptions.join('')}</select>
+        <div class="toggle">
+          <button class="${item.location === 'home' ? 'active home' : ''}" onclick="setLoc(${item.id}, 'home')">Home</button>
+          <button class="${item.location === 'away' ? 'active away' : ''}" onclick="setLoc(${item.id}, 'away')">Away</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function changeBag(itemId, bagIdValue) {
+  const bagId = bagIdValue ? parseInt(bagIdValue, 10) : null;
+  await setItemBag(itemId, bagId);
+  items.find(i => i.id === itemId).bag_id = bagId;
+  render();
 }
 
 async function setLoc(id, loc) {

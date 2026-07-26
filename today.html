@@ -26,6 +26,25 @@
   .pack-item.have { text-decoration: line-through; opacity: 0.5; }
   .dot-missing { width: 8px; height: 8px; border-radius: 50%; background: var(--stamp); flex-shrink: 0; }
   .dot-have { width: 8px; height: 8px; border-radius: 50%; background: #4d7c4a; flex-shrink: 0; }
+  .skip-day-btn {
+    background: none; border: none; color: var(--amber); font-family: var(--mono);
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 0; margin-top: 1rem; cursor: pointer;
+  }
+  .skip-day-btn:hover { text-decoration: underline; }
+
+  .skipped-list { max-width: 640px; margin-bottom: 1.5rem; }
+  .skipped-list h4 { font-size: 0.9rem; margin-bottom: 0.75rem; }
+  .skipped-row {
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 0.85rem; padding: 0.5rem 0; border-bottom: 1px solid var(--line);
+  }
+  .skipped-row:last-child { border-bottom: none; }
+  .skipped-row button {
+    background: none; border: none; color: var(--amber); font-family: var(--mono);
+    font-size: 0.7rem; text-transform: uppercase; cursor: pointer; padding: 0;
+  }
+  .skipped-row button:hover { text-decoration: underline; }
 
   .empty-state { max-width: 640px; margin-bottom: 1.5rem; }
 
@@ -34,6 +53,16 @@
   .notif-card h3 { font-size: 1.05rem; margin-bottom: 0.3rem; }
   .notif-card p { color: var(--slate); font-size: 0.9rem; margin: 0 0 1rem; }
   #notif-status { font-family: var(--mono); font-size: 0.8rem; margin-top: 0.75rem; }
+
+  .onboard-backdrop { position: fixed; inset: 0; background: rgba(23,27,36,0.5); display: none; align-items: center; justify-content: center; padding: 1.5rem; z-index: 30; }
+  .onboard-backdrop.open { display: flex; }
+  .onboard-modal { background: var(--paper); border: 2px solid var(--ink); border-radius: var(--radius); padding: 2rem; max-width: 420px; width: 100%; }
+  .onboard-modal h2 { font-size: 1.5rem; margin-bottom: 0.75rem; }
+  .onboard-modal p { color: var(--slate); margin-bottom: 1.5rem; font-size: 0.95rem; }
+  .onboard-actions { display: flex; gap: 0.75rem; }
+  .onboard-actions .btn { flex: 1; justify-content: center; }
+  .onboard-step2 label { display: block; font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase; color: var(--slate); margin: 1rem 0 0.4rem; }
+  .onboard-step2 select { width: 100%; padding: 0.6rem; border: 2px solid var(--ink); border-radius: var(--radius); font-family: var(--body); }
 </style>
 </head>
 <body>
@@ -46,6 +75,8 @@
     <p style="color:var(--slate); margin-bottom:2rem;">Cross-checked against what's home right now.</p>
 
     <div id="stub-container"><!-- populated by JS --></div>
+
+    <div class="skipped-list" id="skipped-list"><!-- populated by JS --></div>
 
     <div class="card notif-card">
       <span class="bell">🔔</span>
@@ -64,21 +95,76 @@
   </main>
 </div>
 
+<div class="onboard-backdrop" id="onboard-backdrop">
+  <div class="onboard-modal">
+    <div id="onboard-step1">
+      <h2>Quick one before we start</h2>
+      <p>Do you have separate timetables — e.g. Week A and Week B?</p>
+      <div class="onboard-actions">
+        <button class="btn outline" onclick="finishOnboarding(false)">No, just one</button>
+        <button class="btn amber" onclick="showOnboardStep2()">Yes, A/B weeks</button>
+      </div>
+    </div>
+    <div id="onboard-step2" class="onboard-step2" style="display:none;">
+      <h2>Got it — one more thing</h2>
+      <p>So Bagr knows which week is which, tell it what this week is.</p>
+      <label for="onboard-week">Is this week...</label>
+      <select id="onboard-week">
+        <option value="A">Week A</option>
+        <option value="B">Week B</option>
+      </select>
+      <div class="onboard-actions" style="margin-top:1.5rem;">
+        <button class="btn outline" onclick="showOnboardStep1()">Back</button>
+        <button class="btn amber" onclick="finishOnboarding(true)">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js?v=2"></script>
 <script>
 const VAPID_PUBLIC_KEY = 'BK_R-3kGaNHd-APrGqj8mrT-Y8xrfGMgjZSx_i7sjf2fyCr6LeppvrR__D6dcsuPHO_bQgJgLdIqyFQPb2VOqQk';
-let session, slots = [], items = [];
+let session, slots = [], items = [], bags = [], skips = [], profile = null;
 
 async function init() {
   session = await requireSession();
   if (!session) return;
   renderDrawerNav('today');
   const userId = session.user.id;
-  [slots, items] = await Promise.all([fetchSlots(userId), fetchItems(userId)]);
+  [slots, items, profile, bags, skips] = await Promise.all([
+    fetchSlots(userId), fetchItems(userId), fetchProfile(userId), fetchBags(userId), fetchSkips(userId)
+  ]);
+
+  if (!profile || !profile.onboarded) {
+    document.getElementById('onboard-backdrop').classList.add('open');
+  }
+
   render();
+  renderSkippedList();
   populateTimeOptions();
   await reflectNotifPermission();
+}
+
+function showOnboardStep2() {
+  document.getElementById('onboard-step1').style.display = 'none';
+  document.getElementById('onboard-step2').style.display = 'block';
+}
+function showOnboardStep1() {
+  document.getElementById('onboard-step1').style.display = 'block';
+  document.getElementById('onboard-step2').style.display = 'none';
+}
+
+async function finishOnboarding(hasAbWeeks) {
+  const fields = { onboarded: true, has_ab_weeks: hasAbWeeks };
+  if (hasAbWeeks) {
+    fields.ab_reference_date = new Date().toISOString().slice(0, 10);
+    fields.ab_reference_week = document.getElementById('onboard-week').value;
+  }
+  await saveProfile(session.user.id, fields);
+  profile = { user_id: session.user.id, ...fields };
+  document.getElementById('onboard-backdrop').classList.remove('open');
+  render();
 }
 
 function populateTimeOptions() {
@@ -110,12 +196,20 @@ function render() {
   const todayIdx = (new Date().getDay() + 6) % 7; // Mon=0
   const container = document.getElementById('stub-container');
 
-  // Find the next 1-2 upcoming days that have slots
+  // Find the next 1-2 upcoming days that have slots (skipping fully-skipped days, up to 2 weeks out)
   const upcoming = [];
-  for (let offset = 1; offset <= 7 && upcoming.length < 2; offset++) {
+  for (let offset = 1; offset <= 14 && upcoming.length < 2; offset++) {
     const dayIdx = (todayIdx + offset) % 7;
-    const daySlots = slots.filter(s => s.day_of_week === dayIdx);
-    if (daySlots.length) upcoming.push({ dayIdx, daySlots, label: nextOccurrenceLabel(dayIdx) });
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + offset);
+    const dateStr = targetDate.toISOString().slice(0, 10);
+    const weekLetter = weekLetterForDate(profile, targetDate);
+    const daySlots = slots.filter(s =>
+      s.day_of_week === dayIdx &&
+      (weekLetter === null || s.week === null || s.week === weekLetter) &&
+      !isSlotSkipped(skips, s.id, dateStr)
+    );
+    if (daySlots.length) upcoming.push({ dayIdx, daySlots, weekLetter, dateStr, label: nextOccurrenceLabel(dayIdx) });
   }
 
   if (!upcoming.length) {
@@ -129,28 +223,89 @@ function render() {
     return;
   }
 
-  container.innerHTML = upcoming.map(({ dayIdx, daySlots, label }) => {
-    const needed = itemsNeededForDay(slots, items, dayIdx);
-    const rows = needed.length
-      ? needed.map(item => `
-          <div class="pack-item ${item.location === 'home' ? '' : 'have'}">
-            <span class="${item.location === 'home' ? 'dot-missing' : 'dot-have'}"></span>
-            ${item.name} ${item.location === 'home' ? '— grab it' : '— already in bag'}
-          </div>`).join('')
-      : `<div class="pack-item">No items linked to these slots yet</div>`;
+  container.innerHTML = upcoming.map(({ dayIdx, daySlots, weekLetter, dateStr, label }) => {
+    const neededIds = new Set(daySlots.flatMap(s => s.required_item_ids || []));
+    const needed = items.filter(i => neededIds.has(i.id));
+    const rows = needed.length ? renderNeededRows(needed) : `<div class="pack-item">No items linked to these slots yet</div>`;
+
+    const weekTag = weekLetter ? ` · week ${weekLetter}` : '';
+    const slotIds = daySlots.map(s => s.id).join(',');
 
     return `
       <div class="stub">
         <div class="stub-main">
-          <div class="label">${label.toLowerCase()}</div>
+          <div class="label">${label.toLowerCase()}${weekTag}</div>
           <div class="stub-day">${daySlots.map(s => s.label).join(' · ')}</div>
           ${rows}
+          <button class="skip-day-btn" onclick="skipDay('${dateStr}', [${slotIds}])">Skip this day →</button>
         </div>
         <div class="stub-stub">
           <span class="label" style="writing-mode:vertical-rl;">BAGR</span>
         </div>
       </div>`;
   }).join('');
+}
+
+async function skipDay(dateStr, slotIds) {
+  await Promise.all(slotIds.map(id => skipSlotOnDate(session.user.id, id, dateStr)));
+  skips = await fetchSkips(session.user.id);
+  render();
+  renderSkippedList();
+}
+
+function renderSkippedList() {
+  const container = document.getElementById('skipped-list');
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcomingSkips = skips
+    .filter(s => s.skip_date >= todayStr)
+    .sort((a, b) => a.skip_date.localeCompare(b.skip_date));
+
+  if (!upcomingSkips.length) { container.innerHTML = ''; return; }
+
+  container.innerHTML = `
+    <h4 class="label">Skipped</h4>
+    ${upcomingSkips.map(skip => {
+      const slot = slots.find(s => s.id === skip.slot_id);
+      const dateLabel = new Date(skip.skip_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      return `
+        <div class="skipped-row">
+          <span>${slot ? slot.label : 'Slot'} — ${dateLabel}</span>
+          <button onclick="undoSkip(${skip.slot_id}, '${skip.skip_date}')">Undo</button>
+        </div>`;
+    }).join('')}
+  `;
+}
+
+async function undoSkip(slotId, dateStr) {
+  await unskipSlotOnDate(slotId, dateStr);
+  skips = await fetchSkips(session.user.id);
+  render();
+  renderSkippedList();
+}
+
+function renderNeededRows(needed) {
+  const itemRow = item => `
+    <div class="pack-item ${item.location === 'home' ? '' : 'have'}">
+      <span class="${item.location === 'home' ? 'dot-missing' : 'dot-have'}"></span>
+      ${item.name} ${item.location === 'home' ? '— grab it' : '— already in bag'}
+    </div>`;
+
+  const usedBagIds = new Set(needed.map(i => i.bag_id).filter(Boolean));
+  if (usedBagIds.size < 2) return needed.map(itemRow).join(''); // one bag or none — no need to group
+
+  const groups = bags.filter(b => usedBagIds.has(b.id)).map(bag => ({
+    bag, items: needed.filter(i => i.bag_id === bag.id)
+  }));
+  const unassigned = needed.filter(i => !i.bag_id || !bags.find(b => b.id === i.bag_id));
+  if (unassigned.length) groups.push({ bag: null, items: unassigned });
+
+  return groups.map(g => `
+    <div style="margin-top:0.6rem;">
+      <div style="font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; color:var(--amber); margin-bottom:0.2rem;">
+        ${g.bag ? g.bag.name : 'Unassigned'}
+      </div>
+      ${g.items.map(itemRow).join('')}
+    </div>`).join('');
 }
 
 async function reflectNotifPermission() {

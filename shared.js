@@ -38,6 +38,18 @@ async function signInWithPassword(email, password) {
   return error;
 }
 
+async function sendPasswordReset(email) {
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: new URL('reset-password.html', window.location.href).href
+  });
+  return error;
+}
+
+async function updatePassword(newPassword) {
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  return error;
+}
+
 async function signUpWithPassword(email, password) {
   const { error } = await sb.auth.signUp({ email, password });
   return error;

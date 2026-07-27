@@ -65,11 +65,12 @@ button { font-family: var(--body); cursor: pointer; }
   font-weight: 600;
   font-size: 0.95rem;
   text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
   transition: transform 0.12s ease, background 0.12s ease;
 }
 .btn:hover { transform: translateY(-2px); }
-.btn.outline { background: transparent; color: var(--ink); }
-.btn.amber { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+.btn.outline { background: rgba(255,255,255,0.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255,255,255,0.6); }
+.btn.amber { background: var(--amber); border-color: var(--amber); color: var(--ink); box-shadow: inset 0 1px 0 rgba(255,255,255,0.4); }
 
 /* Focus visibility */
 :focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
@@ -83,8 +84,11 @@ button { font-family: var(--body); cursor: pointer; }
 .app-nav {
   display: grid; grid-template-columns: 44px 1fr 44px;
   align-items: center;
-  padding: 1.1rem 1.25rem; border-bottom: 2px solid var(--ink);
-  background: var(--paper);
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid rgba(23,27,36,0.12);
+  background: rgba(243,239,230,0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
   position: sticky; top: 0; z-index: 5;
 }
 .app-nav .logo-mark {
@@ -99,16 +103,22 @@ button { font-family: var(--body); cursor: pointer; }
 .hamburger span { width: 20px; height: 2px; background: var(--ink); display: block; }
 
 .drawer-overlay {
-  position: fixed; inset: 0; background: rgba(23,27,36,0.35);
+  position: fixed; inset: 0; background: rgba(23,27,36,0.25);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
   opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 20;
 }
 .drawer-overlay.open { opacity: 1; pointer-events: auto; }
 
 .drawer {
   position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
-  background: var(--ink); color: var(--paper);
+  background: rgba(23,27,36,0.82);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  color: var(--paper);
   transform: translateX(-100%); transition: transform 0.25s ease;
   z-index: 21; padding: 1.5rem 1.25rem;
+  border-right: 1px solid rgba(243,239,230,0.12);
 }
 .drawer.open { transform: translateX(0); }
 .drawer-close {
@@ -133,10 +143,14 @@ button { font-family: var(--body); cursor: pointer; }
 .app-main { flex: 1; padding: 2rem 1.5rem 4rem; max-width: 880px; margin: 0 auto; width: 100%; }
 
 .card {
-  background: white;
-  border: 2px solid var(--ink);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1.5px solid rgba(23,27,36,0.9);
   border-radius: var(--radius);
   padding: 1.25rem;
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 8px 24px rgba(23,27,36,0.06);
 }
 
 .empty-state {

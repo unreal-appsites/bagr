@@ -14,9 +14,13 @@
 <link rel="stylesheet" href="shared.css">
 <style>
   .stub {
-    background: var(--ink); color: var(--paper); border-radius: var(--radius);
+    background: rgba(23,27,36,0.78);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    color: var(--paper); border-radius: var(--radius);
     display: flex; max-width: 640px; overflow: hidden;
-    box-shadow: 0 18px 40px rgba(23,27,36,0.2); margin-bottom: 1.5rem;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 18px 40px rgba(23,27,36,0.25);
+    margin-bottom: 1.5rem;
   }
   .stub-main { padding: 1.5rem 1.75rem; flex: 1; }
   .stub-stub { width: 130px; padding: 1.5rem 1rem; border-left: 2px dashed var(--paper); display: flex; align-items: center; justify-content: center; }

@@ -11,19 +11,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bagr">
 <meta name="theme-color" content="#171B24">
-<link rel="stylesheet" href="shared.css?v=3">
+<link rel="stylesheet" href="shared.css?v=4">
 <style>
   .day-col h2 { font-family: var(--mono); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--slate); margin-bottom: 0.75rem; }
   .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1rem; }
   @media (max-width: 900px) { .week-grid { grid-template-columns: 1fr; } }
-  .slot {
-    background: rgba(255,255,255,0.5);
-    backdrop-filter: blur(18px) saturate(180%);
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.5); border-radius: var(--radius);
-    padding: 0.75rem; margin-bottom: 0.75rem; position: relative;
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
-  }
+  .slot { border: 2px solid var(--ink); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 0.75rem; background: white; position: relative; }
   .slot-label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; padding-right: 1.5rem; }
   .slot-delete {
     position: absolute; top: 0.5rem; right: 0.5rem;
@@ -91,7 +84,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="shared.js?v=3"></script>
+<script src="shared.js?v=4"></script>
 <script>
 let session, allSlots = [], allItems = [], profile = null, activeDay = 0, activeWeekTab = null;
 

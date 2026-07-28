@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get started — Bagr</title>
+<link rel="apple-touch-icon" href="logo-180.png">
+<link rel="icon" href="logo-32.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bagr">
+<meta name="theme-color" content="#171B24">
+<link rel="stylesheet" href="shared.css?v=4">
+<style>
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  .progress { display: flex; gap: 6px; padding: 1.25rem 1.5rem 0; }
+  .dot { height: 4px; flex: 1; border-radius: 2px; background: var(--paper-dim); }
+  .dot.done, .dot.active { background: var(--amber); }
+  .ob-content { flex: 1; padding: 2.5rem 1.75rem 1rem; max-width: 480px; margin: 0 auto; width: 100%; }
+  .ob-icon { font-size: 3rem; margin-bottom: 1.25rem; }
+  .eyebrow { font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--slate); margin-bottom: 0.9rem; }
+  .ob-content h1 { font-size: clamp(2rem, 7vw, 2.6rem); line-height: 1.05; margin-bottom: 1rem; }
+  .ob-sub { color: var(--slate); font-size: 1rem; line-height: 1.55; margin-bottom: 1.75rem; max-width: 38ch; }
+  .step { display: none; }
+  .step.active { display: block; }
+
+  .week-choice { display: flex; gap: 0.75rem; margin-bottom: 0.5rem; }
+  .week-choice button {
+    flex: 1; padding: 0.9rem; border: 2px solid var(--ink); border-radius: var(--radius);
+    background: white; font-weight: 700; font-family: var(--body); cursor: pointer;
+  }
+  .week-choice button.selected { background: var(--amber); }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1rem 0; min-height: 2rem; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    border: 2px solid var(--ink); border-radius: 999px; padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+    font-weight: 600; font-size: 0.85rem; background: white;
+  }
+  .chip button { background: none; border: none; color: var(--slate); cursor: pointer; font-size: 0.9rem; padding: 0; }
+  .add-row { display: flex; gap: 0.6rem; }
+  .add-row input {
+    flex: 1; padding: 0.7rem 1rem; border: 2px dashed var(--slate); border-radius: 999px;
+    font-family: var(--body); font-size: 0.9rem; background: transparent;
+  }
+  .add-row input:focus { outline: none; border-color: var(--ink); border-style: solid; }
+  .add-row button { padding: 0.7rem 1.1rem; border: 2px solid var(--ink); border-radius: 999px; background: var(--ink); color: var(--paper); font-weight: 600; cursor: pointer; }
+
+  .ob-footer { padding: 1.5rem 1.75rem 3rem; max-width: 480px; margin: 0 auto; width: 100%; }
+  .ob-footer .btn { width: 100%; justify-content: center; margin-bottom: 0.75rem; }
+  .ob-skip { display: block; text-align: center; font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--slate); background: none; border: none; cursor: pointer; width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="progress" id="progress"></div>
+
+<!-- Step 1: Welcome -->
+<div class="step active" data-step="1">
+  <div class="ob-content">
+    <div class="ob-icon">🎒</div>
+    <div class="eyebrow">Welcome to Bagr</div>
+    <h1>Your week,<br>in one bag.</h1>
+    <p class="ob-sub">Build a timetable, tell Bagr what each day needs, and get a pack list before you forget anything. Takes about two minutes to set up.</p>
+  </div>
+  <div class="ob-footer">
+    <button class="btn amber" onclick="goTo(2)">Let's go →</button>
+  </div>
+</div>
+
+<!-- Step 2: A/B weeks -->
+<div class="step" data-step="2">
+  <div class="ob-content">
+    <div class="eyebrow">Step 2 of 5</div>
+    <h1>Rotating<br>timetable?</h1>
+    <p class="ob-sub">Some schools alternate between two weeks — Week A and Week B. Does yours?</p>
+    <div id="week-picker" style="display:none;">
+      <p class="label" style="margin-bottom:0.6rem;">This week is currently...</p>
+      <div class="week-choice">
+        <button id="week-a-btn" onclick="pickWeek('A')">Week A</button>
+        <button id="week-b-btn" onclick="pickWeek('B')">Week B</button>
+      </div>
+    </div>
+  </div>
+  <div class="ob-footer">
+    <button class="btn amber" id="ab-continue-btn" onclick="confirmAbWeeks()" style="display:none;">Save & continue →</button>
+    <button class="btn" onclick="showWeekPicker()">Yes, we alternate</button>
+    <button class="btn outline" onclick="draft.hasAbWeeks=false; goTo(3)">No, just one timetable</button>
+  </div>
+</div>
+
+<!-- Step 3: Bags -->
+<div class="step" data-step="3">
+  <div class="ob-content">
+    <div class="eyebrow">Step 3 of 5 · optional</div>
+    <h1>Got more<br>than one bag?</h1>
+    <p class="ob-sub">School bag, gym kit, work bag — if you juggle a few, Bagr can keep them separate. Add one now, or skip and do it later.</p>
+    <div class="add-row">
+      <input id="bag-input" placeholder="e.g. Gym bag" maxlength="30">
+      <button onclick="addBagDraft()">Add</button>
+    </div>
+    <div class="chip-row" id="bag-chips"></div>
+  </div>
+  <div class="ob-footer">
+    <button class="btn amber" onclick="goTo(4)">Continue →</button>
+    <button class="ob-skip" onclick="goTo(4)">Skip for now</button>
+  </div>
+</div>
+
+<!-- Step 4: Items -->
+<div class="step" data-step="4">
+  <div class="ob-content">
+    <div class="eyebrow">Step 4 of 5 · optional</div>
+    <h1>Add a few<br>things you carry</h1>
+    <p class="ob-sub">Calculator, textbook, trainers — whatever you're always shuffling between home and your bag. Add more anytime.</p>
+    <div class="add-row">
+      <input id="item-input" placeholder="e.g. Gym shoes">
+      <button onclick="addItemDraft()">Add</button>
+    </div>
+    <div class="chip-row" id="item-chips"></div>
+  </div>
+  <div class="ob-footer">
+    <button class="btn amber" onclick="goTo(5)">Continue →</button>
+    <button class="ob-skip" onclick="goTo(5)">Skip for now</button>
+  </div>
+</div>
+
+<!-- Step 5: Hand-off to sign up -->
+<div class="step" data-step="5">
+  <div class="ob-content">
+    <div class="ob-icon">📅</div>
+    <div class="eyebrow">Last step</div>
+    <h1>Save your<br>setup</h1>
+    <p class="ob-sub">Create an account and everything you just set up will be waiting for you — plus you'll be ready to build out the rest of your timetable.</p>
+  </div>
+  <div class="ob-footer">
+    <button class="btn amber" onclick="finishOnboarding()">Continue to Sign Up →</button>
+  </div>
+</div>
+
+<script>
+  let currentStep = 1;
+  const draft = { hasAbWeeks: null, abWeekLetter: null, bagNames: [], itemNames: [] };
+
+  function renderProgress() {
+    const p = document.getElementById('progress');
+    p.innerHTML = [1,2,3,4,5].map(n =>
+      `<div class="dot ${n < currentStep ? 'done' : n === currentStep ? 'active' : ''}"></div>`
+    ).join('');
+  }
+
+  function goTo(step) {
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.querySelector(`.step[data-step="${step}"]`).classList.add('active');
+    currentStep = step;
+    renderProgress();
+  }
+
+  function showWeekPicker() {
+    document.getElementById('week-picker').style.display = 'block';
+    document.getElementById('ab-continue-btn').style.display = 'flex';
+  }
+  function pickWeek(letter) {
+    draft.abWeekLetter = letter;
+    document.getElementById('week-a-btn').classList.toggle('selected', letter === 'A');
+    document.getElementById('week-b-btn').classList.toggle('selected', letter === 'B');
+  }
+  function confirmAbWeeks() {
+    if (!draft.abWeekLetter) { pickWeek('A'); }
+    draft.hasAbWeeks = true;
+    goTo(3);
+  }
+
+  function addBagDraft() {
+    const input = document.getElementById('bag-input');
+    const name = input.value.trim();
+    if (!name) return;
+    draft.bagNames.push(name);
+    input.value = '';
+    renderBagChips();
+  }
+  function renderBagChips() {
+    document.getElementById('bag-chips').innerHTML = draft.bagNames.map((name, i) => `
+      <span class="chip">${name} <button onclick="removeBagDraft(${i})">&times;</button></span>
+    `).join('');
+  }
+  function removeBagDraft(i) {
+    draft.bagNames.splice(i, 1);
+    renderBagChips();
+  }
+
+  function addItemDraft() {
+    const input = document.getElementById('item-input');
+    const name = input.value.trim();
+    if (!name) return;
+    draft.itemNames.push(name);
+    input.value = '';
+    renderItemChips();
+  }
+  function renderItemChips() {
+    document.getElementById('item-chips').innerHTML = draft.itemNames.map((name, i) => `
+      <span class="chip">${name} <button onclick="removeItemDraft(${i})">&times;</button></span>
+    `).join('');
+  }
+  function removeItemDraft(i) {
+    draft.itemNames.splice(i, 1);
+    renderItemChips();
+  }
+
+  function finishOnboarding() {
+    sessionStorage.setItem('bagr_onboarding_draft', JSON.stringify(draft));
+    window.location.href = 'login.html?mode=signup';
+  }
+
+  renderProgress();
+</script>
+
+</body>
+</html>

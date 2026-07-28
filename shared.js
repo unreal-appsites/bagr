@@ -60,7 +60,48 @@ async function signOut() {
   window.location.href = 'index.html';
 }
 
-// ---- Data: profile / A-B week tracking ----
+// ---- Onboarding draft (collected before an account exists) ----
+const ONBOARD_KEY = 'bagr_onboarding_draft';
+
+function saveOnboardingDraft(data) {
+  sessionStorage.setItem(ONBOARD_KEY, JSON.stringify(data));
+}
+function getOnboardingDraft() {
+  const raw = sessionStorage.getItem(ONBOARD_KEY);
+  return raw ? JSON.parse(raw) : null;
+}
+function clearOnboardingDraft() {
+  sessionStorage.removeItem(ONBOARD_KEY);
+}
+
+// Applies a saved onboarding draft to a real, now-authenticated account.
+// Safe to call every time — it's a no-op if there's no draft waiting.
+async function applyOnboardingDraft(userId) {
+  const draft = getOnboardingDraft();
+  if (!draft) return false;
+
+  const profileFields = { onboarded: true, has_ab_weeks: !!draft.hasAbWeeks };
+  if (draft.hasAbWeeks) {
+    profileFields.ab_reference_date = new Date().toISOString().slice(0, 10);
+    profileFields.ab_reference_week = draft.abWeekLetter || 'A';
+  }
+  await saveProfile(userId, profileFields);
+
+  if (draft.bagNames && draft.bagNames.length) {
+    for (let i = 0; i < draft.bagNames.length; i++) {
+      await createBag(userId, draft.bagNames[i], BAG_COLORS[i % BAG_COLORS.length]);
+    }
+  }
+
+  if (draft.itemNames && draft.itemNames.length) {
+    await sb.from('items').insert(draft.itemNames.map(name => ({ user_id: userId, name, location: 'home' })));
+  }
+
+  clearOnboardingDraft();
+  return true;
+}
+
+// ---- Profile / A-B week tracking ----
 async function fetchProfile(userId) {
   const { data, error } = await sb.from('profiles').select('*').eq('user_id', userId).maybeSingle();
   if (error) throw error;

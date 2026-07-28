@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bagr">
 <meta name="theme-color" content="#171B24">
-<link rel="stylesheet" href="shared.css?v=3">
+<link rel="stylesheet" href="shared.css?v=4">
 <style>
   .hero {
     min-height: 92vh;
@@ -22,6 +22,7 @@
     position: relative;
   }
   .hero-inner { max-width: 980px; margin: 0 auto; width: 100%; }
+  .hero-logo { width: 56px; height: 56px; border-radius: 14px; margin-bottom: 1.75rem; display: block; }
   .eyebrow {
     color: var(--stamp);
     font-size: 0.8rem;
@@ -94,12 +95,13 @@
 
 <section class="hero">
   <div class="hero-inner">
+    <img src="logo-192.png" alt="Bagr" class="hero-logo">
     <div class="eyebrow">manifest · packed / unpacked</div>
     <h1 class="headline">Stop repacking<br>from <span class="accent">memory.</span></h1>
     <p class="sub">Bagr tracks what's actually at home versus what's still at school or work — and tells you exactly what to grab, the night before you need it.</p>
     <div class="cta-row">
-      <a class="btn amber" href="login.html">Get started</a>
-      <a class="btn outline" href="#how">See how it works</a>
+      <a class="btn amber" href="onboarding.html">Continue</a>
+      <a class="btn outline" href="login.html">Already have an account?</a>
     </div>
 
     <div class="stub">
@@ -145,7 +147,7 @@
 <footer>Bagr — built for the stuff that lives in two places at once.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="shared.js?v=3"></script>
+<script src="shared.js?v=4"></script>
 <script>
   (async () => {
     const { data: { session } } = await sb.auth.getSession();

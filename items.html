@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bagr">
 <meta name="theme-color" content="#171B24">
-<link rel="stylesheet" href="shared.css?v=3">
+<link rel="stylesheet" href="shared.css?v=4">
 <style>
   .bags-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 1rem; }
   .bag-chip {
@@ -37,13 +37,8 @@
 
   .item-row {
     display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
-    padding: 0.9rem 1rem;
-    background: rgba(255,255,255,0.5);
-    backdrop-filter: blur(18px) saturate(180%);
-    -webkit-backdrop-filter: blur(18px) saturate(180%);
-    border: 1px solid rgba(255,255,255,0.5); border-radius: var(--radius);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
-    margin-bottom: 0.75rem;
+    padding: 0.9rem 1rem; border: 2px solid var(--ink); border-radius: var(--radius);
+    background: white; margin-bottom: 0.75rem;
   }
   .item-name { font-weight: 600; flex: 1; }
   .forgotten-badge {
@@ -52,6 +47,11 @@
     color: var(--stamp); margin-left: 0.5rem;
   }
   .item-controls { display: flex; align-items: center; gap: 0.6rem; }
+  .delete-item-btn {
+    background: none; border: none; color: var(--slate); font-size: 1rem;
+    line-height: 1; cursor: pointer; padding: 0.2rem;
+  }
+  .delete-item-btn:hover { color: var(--stamp); }
   .bag-select {
     font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase;
     border: 2px solid var(--ink); border-radius: var(--radius); padding: 0.35rem 0.4rem;
@@ -90,7 +90,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="shared.js?v=3"></script>
+<script src="shared.js?v=4"></script>
 <script>
 let session, items = [], bags = [];
 
@@ -177,9 +177,31 @@ function itemRowHtml(item) {
           <button class="${item.location === 'home' ? 'active home' : ''}" onclick="setLoc(${item.id}, 'home')">Home</button>
           <button class="${item.location === 'away' ? 'active away' : ''}" onclick="setLoc(${item.id}, 'away')">Away</button>
         </div>
+        <button class="delete-item-btn" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')" aria-label="Delete ${item.name}">&times;</button>
       </div>
     </div>
   `;
+}
+
+async function deleteItem(itemId, name) {
+  if (!confirm(`Delete "${name}"? This also removes it from any timetable slots.`)) return;
+
+  // Clean up any slots that reference this item
+  const { data: affectedSlots } = await sb.from('slots')
+    .select('id, required_item_ids')
+    .contains('required_item_ids', [itemId]);
+  if (affectedSlots && affectedSlots.length) {
+    await Promise.all(affectedSlots.map(slot =>
+      sb.from('slots').update({
+        required_item_ids: slot.required_item_ids.filter(id => id !== itemId)
+      }).eq('id', slot.id)
+    ));
+  }
+
+  const { error } = await sb.from('items').delete().eq('id', itemId);
+  if (error) { console.error(error); return; }
+  items = items.filter(i => i.id !== itemId);
+  render();
 }
 
 async function changeBag(itemId, bagIdValue) {

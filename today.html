@@ -33,6 +33,20 @@
   }
   .skip-day-btn:hover { text-decoration: underline; }
 
+  .brief-card { max-width: 640px; margin-bottom: 1.5rem; }
+  .brief-card h3 { font-size: 1.05rem; margin-bottom: 0.9rem; }
+  .brief-empty { color: var(--slate); font-size: 0.9rem; }
+  .brief-row { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--line); }
+  .brief-row:last-child { border-bottom: none; }
+  .brief-row .pack-item { padding: 0; }
+  .brief-status { font-family: var(--mono); font-size: 0.75rem; text-transform: uppercase; }
+  .brief-status.ok { color: #4d7c4a; }
+  .brief-status.warn { color: var(--stamp); }
+  .forgotten-line {
+    display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding-top: 1rem;
+    border-top: 2px dashed var(--slate); font-size: 0.85rem; color: var(--slate);
+  }
+
   .skipped-list { max-width: 640px; margin-bottom: 1.5rem; }
   .skipped-list h4 { font-size: 0.9rem; margin-bottom: 0.75rem; }
   .skipped-row {
@@ -73,6 +87,8 @@
     <p class="label" style="margin-bottom:0.6rem;">Next departure</p>
     <h1 style="font-size:2.1rem; margin-bottom:0.5rem;">What you need next</h1>
     <p style="color:var(--slate); margin-bottom:2rem;">Cross-checked against what's home right now.</p>
+
+    <div class="card brief-card" id="brief-card"><!-- populated by JS --></div>
 
     <div id="stub-container"><!-- populated by JS --></div>
 
@@ -149,6 +165,7 @@ async function init() {
     document.getElementById('onboard-backdrop').classList.add('open');
   }
 
+  renderBrief();
   render();
   renderSkippedList();
   populateTimeOptions();
@@ -199,6 +216,56 @@ function utcHourToLocalHour(utcHour) {
   const d = new Date();
   d.setUTCHours(utcHour, 0, 0, 0);
   return d.getHours();
+}
+
+// Today's brief: what's needed for TODAY specifically (render()/upcoming below
+// only looks ahead from tomorrow), plus a nod to anything chronically forgotten.
+function renderBrief() {
+  const card = document.getElementById('brief-card');
+  const now = new Date();
+  const todayIdx = (now.getDay() + 6) % 7; // Mon=0
+  const dateStr = now.toISOString().slice(0, 10);
+  const weekLetter = weekLetterForDate(profile, now);
+
+  const daySlots = slots.filter(s =>
+    s.day_of_week === todayIdx &&
+    (weekLetter === null || s.week === null || s.week === weekLetter) &&
+    !isSlotSkipped(skips, s.id, dateStr)
+  );
+
+  const forgotten = items.filter(i => (i.missed_count || 0) >= 3);
+  const forgottenLine = forgotten.length
+    ? `<div class="forgotten-line">🔥 ${forgotten.length} item${forgotten.length > 1 ? 's' : ''} you often forget: ${forgotten.map(i => i.name).join(', ')}</div>`
+    : '';
+
+  if (!daySlots.length) {
+    card.innerHTML = `
+      <h3>Today's brief</h3>
+      <p class="brief-empty">Nothing on today's timetable${weekLetter ? ` (week ${weekLetter})` : ''}. Nothing to grab before you head out.</p>
+      ${forgottenLine}`;
+    return;
+  }
+
+  const neededIds = new Set(daySlots.flatMap(s => s.required_item_ids || []));
+  const needed = items.filter(i => neededIds.has(i.id));
+  const missing = needed.filter(i => i.location === 'home');
+
+  const rows = needed.length
+    ? needed.map(item => `
+        <div class="brief-row">
+          <div class="pack-item ${item.location === 'home' ? '' : 'have'}">
+            <span class="${item.location === 'home' ? 'dot-missing' : 'dot-have'}"></span>${item.name}
+          </div>
+        </div>`).join('')
+    : `<div class="brief-empty">No items linked to today's slots yet.</div>`;
+
+  card.innerHTML = `
+    <h3>Today's brief — ${daySlots.map(s => s.label).join(' · ')}${weekLetter ? ` · week ${weekLetter}` : ''}</h3>
+    ${missing.length
+      ? `<p class="brief-status warn">${missing.length} still home — grab before you go</p>`
+      : `<p class="brief-status ok">✓ Everything's packed for today</p>`}
+    ${rows}
+    ${forgottenLine}`;
 }
 
 function render() {
@@ -258,6 +325,7 @@ function render() {
 async function skipDay(dateStr, slotIds) {
   await Promise.all(slotIds.map(id => skipSlotOnDate(session.user.id, id, dateStr)));
   skips = await fetchSkips(session.user.id);
+  renderBrief();
   render();
   renderSkippedList();
 }
@@ -288,6 +356,7 @@ function renderSkippedList() {
 async function undoSkip(slotId, dateStr) {
   await unskipSlotOnDate(slotId, dateStr);
   skips = await fetchSkips(session.user.id);
+  renderBrief();
   render();
   renderSkippedList();
 }

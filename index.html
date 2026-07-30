@@ -1,18 +1,17 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Bagr — never repack from memory again</title>
-<link href="logo-180.png" rel="apple-touch-icon"/>
-<link href="logo-32.png" rel="icon"/>
-<link href="manifest.json" rel="manifest"/>
-<meta content="yes" name="apple-mobile-web-app-capable"/>
-<meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
-<meta content="Bagr" name="apple-mobile-web-app-title"/>
-<meta content="#171B24" name="theme-color"/>
-<link href="shared.css?v=4" rel="stylesheet"/>
+<link rel="apple-touch-icon" href="logo-180.png">
+<link rel="icon" href="logo-32.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bagr">
+<meta name="theme-color" content="#171B24">
+<link rel="stylesheet" href="shared.css?v=4">
 <style>
   .hero {
     min-height: 92vh;
@@ -90,66 +89,63 @@
   }
 </style>
 </head>
-<body><div id="ai-briefing" style="padding:16px;margin:16px;border:1px solid #ccc;border-radius:12px;background:#f5f5f5">
-<h2 id="greet"></h2>
-<p><strong>✨ AI Daily Briefing</strong></p>
-<p id="brief">Loading...</p>
-<script>
-const h=new Date().getHours();
-document.getElementById('greet').textContent=h<12?'Good morning!':h<17?'Good afternoon!':'Good evening!';
-document.getElementById('brief').textContent='Have a great day! Check today\'s lessons and make sure your bag is fully packed.';
-</script>
-</div>
+<body>
+
 <div class="stripe"></div>
+
 <section class="hero">
-<div class="hero-inner">
-<img alt="Bagr" class="hero-logo" src="logo-192.png"/>
-<div class="eyebrow">manifest · packed / unpacked</div>
-<h1 class="headline">Stop repacking<br/>from <span class="accent">memory.</span></h1>
-<p class="sub">Bagr tracks what's actually at home versus what's still at school or work — and tells you exactly what to grab, the night before you need it.</p>
-<div class="cta-row">
-<a class="btn amber" href="onboarding.html">Continue</a>
-<a class="btn outline" href="login.html">Already have an account?</a>
-</div>
-<div class="stub">
-<div class="stub-main">
-<div class="label">tomorrow requires</div>
-<div class="stub-day">Chemistry — Period 3</div>
-<ul class="stub-items">
-<li>Calculator</li>
-<li>Lab coat</li>
-<li>Textbook (Ch. 4–6)</li>
-</ul>
-</div>
-<div class="stub-stub">
-<div class="stub-code">BAGR · TUE</div>
-</div>
-</div>
-</div>
+  <div class="hero-inner">
+    <img src="logo-192.png" alt="Bagr" class="hero-logo">
+    <div class="eyebrow">manifest · packed / unpacked</div>
+    <h1 class="headline">Stop repacking<br>from <span class="accent">memory.</span></h1>
+    <p class="sub">Bagr tracks what's actually at home versus what's still at school or work — and tells you exactly what to grab, the night before you need it.</p>
+    <div class="cta-row">
+      <a class="btn amber" href="onboarding.html">Continue</a>
+      <a class="btn outline" href="login.html">Already have an account?</a>
+    </div>
+
+    <div class="stub">
+      <div class="stub-main">
+        <div class="label">tomorrow requires</div>
+        <div class="stub-day">Chemistry — Period 3</div>
+        <ul class="stub-items">
+          <li>Calculator</li>
+          <li>Lab coat</li>
+          <li>Textbook (Ch. 4–6)</li>
+        </ul>
+      </div>
+      <div class="stub-stub">
+        <div class="stub-code">BAGR · TUE</div>
+      </div>
+    </div>
+  </div>
 </section>
+
 <section class="explain" id="how">
-<div class="explain-inner">
-<h2>Your stuff, split between two places. Bagr closes the gap.</h2>
-<div class="steps">
-<div class="step">
-<div class="num">01</div>
-<h3>Set your timetable</h3>
-<p>Add the recurring classes, shifts, or sessions you go to — and what each one requires.</p>
-</div>
-<div class="step">
-<div class="num">02</div>
-<h3>Mark items as you move them</h3>
-<p>When something leaves your bag or comes home, flag it. Bagr keeps score.</p>
-</div>
-<div class="step">
-<div class="num">03</div>
-<h3>Get tonight's pack list</h3>
-<p>Bagr cross-checks tomorrow's timetable against what's home and pushes a reminder before you forget.</p>
-</div>
-</div>
-</div>
+  <div class="explain-inner">
+    <h2>Your stuff, split between two places. Bagr closes the gap.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="num">01</div>
+        <h3>Set your timetable</h3>
+        <p>Add the recurring classes, shifts, or sessions you go to — and what each one requires.</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h3>Mark items as you move them</h3>
+        <p>When something leaves your bag or comes home, flag it. Bagr keeps score.</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h3>Get tonight's pack list</h3>
+        <p>Bagr cross-checks tomorrow's timetable against what's home and pushes a reminder before you forget.</p>
+      </div>
+    </div>
+  </div>
 </section>
+
 <footer>Bagr — built for the stuff that lives in two places at once.</footer>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js?v=4"></script>
 <script>
@@ -158,5 +154,6 @@ document.getElementById('brief').textContent='Have a great day! Check today\'s l
     if (session) window.location.href = 'today.html';
   })();
 </script>
+
 </body>
 </html>

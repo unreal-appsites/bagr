@@ -83,7 +83,8 @@ button { font-family: var(--body); cursor: pointer; }
 .app-nav {
   display: grid; grid-template-columns: 44px 1fr 44px;
   align-items: center;
-  padding: 1.1rem 1.25rem; border-bottom: 2px solid var(--ink);
+  padding: calc(1.1rem + env(safe-area-inset-top)) 1.25rem 1.1rem;
+  border-bottom: 2px solid var(--ink);
   background: var(--paper);
   position: sticky; top: 0; z-index: 5;
 }
@@ -105,15 +106,17 @@ button { font-family: var(--body); cursor: pointer; }
 .drawer-overlay.open { opacity: 1; pointer-events: auto; }
 
 .drawer {
-  position: fixed; top: 0; left: 0; bottom: 0; width: 280px;
+  position: fixed; top: 0; left: 0; bottom: 0; width: 280px; height: 100dvh;
   background: var(--ink); color: var(--paper);
   transform: translateX(-100%); transition: transform 0.25s ease;
-  z-index: 21; padding: 1.5rem 1.25rem;
+  z-index: 21;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1.25rem calc(1.5rem + env(safe-area-inset-bottom));
+  overflow-y: auto;
 }
 .drawer.open { transform: translateX(0); }
 .drawer-close {
   background: none; border: none; color: var(--paper); font-size: 1.4rem;
-  position: absolute; top: 1.3rem; right: 1.25rem; cursor: pointer; line-height: 1;
+  position: absolute; top: calc(1.3rem + env(safe-area-inset-top)); right: 1.25rem; cursor: pointer; line-height: 1;
 }
 .drawer-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-bottom: 2.5rem; }
 .drawer-label {

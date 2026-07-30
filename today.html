@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Today — Bagr</title>
 <link rel="apple-touch-icon" href="logo-180.png">
 <link rel="icon" href="logo-32.png">
@@ -220,9 +220,16 @@ function utcHourToLocalHour(utcHour) {
 
 // Today's brief: what's needed for TODAY specifically (render()/upcoming below
 // only looks ahead from tomorrow), plus a nod to anything chronically forgotten.
+function greetingForHour(hour) {
+  if (hour < 12) return 'Good morning!';
+  if (hour < 18) return 'Good afternoon!';
+  return 'Good evening!';
+}
+
 function renderBrief() {
   const card = document.getElementById('brief-card');
   const now = new Date();
+  const greeting = greetingForHour(now.getHours());
   const todayIdx = (now.getDay() + 6) % 7; // Mon=0
   const dateStr = now.toISOString().slice(0, 10);
   const weekLetter = weekLetterForDate(profile, now);
@@ -240,9 +247,10 @@ function renderBrief() {
 
   if (!daySlots.length) {
     card.innerHTML = `
-      <h3>Today's brief</h3>
-      <p class="brief-empty">Nothing on today's timetable${weekLetter ? ` (week ${weekLetter})` : ''}. Nothing to grab before you head out.</p>
+      <h3>${greeting}</h3>
+      <p class="brief-empty" id="brief-status-line">Nothing on today's timetable${weekLetter ? ` (week ${weekLetter})` : ''}. Nothing to grab before you head out.</p>
       ${forgottenLine}`;
+    maybeEnhanceBriefWithAI({ daySlots: [], needed: [], missing: [], forgotten: forgotten.map(i => i.name), weekLetter });
     return;
   }
 
@@ -260,12 +268,39 @@ function renderBrief() {
     : `<div class="brief-empty">No items linked to today's slots yet.</div>`;
 
   card.innerHTML = `
-    <h3>Today's brief — ${daySlots.map(s => s.label).join(' · ')}${weekLetter ? ` · week ${weekLetter}` : ''}</h3>
+    <h3>${greeting} ${daySlots.map(s => s.label).join(' · ')}${weekLetter ? ` · week ${weekLetter}` : ''}</h3>
     ${missing.length
-      ? `<p class="brief-status warn">${missing.length} still home — grab before you go</p>`
-      : `<p class="brief-status ok">✓ Everything's packed for today</p>`}
+      ? `<p class="brief-status warn" id="brief-status-line">${missing.length} still home — grab before you go</p>`
+      : `<p class="brief-status ok" id="brief-status-line">✓ Everything's packed for today</p>`}
     ${rows}
     ${forgottenLine}`;
+
+  maybeEnhanceBriefWithAI({
+    daySlots: daySlots.map(s => s.label),
+    needed: needed.map(i => i.name),
+    missing: missing.map(i => i.name),
+    forgotten: forgotten.map(i => i.name),
+    weekLetter
+  });
+}
+
+// Ultimate-only: ask the ai-brief edge function to turn the template line
+// above into a natural sentence. Silently does nothing if the user isn't
+// entitled, the function isn't deployed yet, or the call fails for any
+// reason — the plain template line already rendered is always a valid brief
+// on its own, so there's no loading state or error state to show here.
+async function maybeEnhanceBriefWithAI(payload) {
+  try {
+    const { data, error } = await sb.functions.invoke('ai-brief', { body: payload });
+    if (error || !data || !data.entitled || !data.brief) return;
+    const line = document.getElementById('brief-status-line');
+    if (line) {
+      line.textContent = data.brief;
+      line.classList.remove('warn', 'ok');
+    }
+  } catch (err) {
+    // Non-fatal — template brief stands.
+  }
 }
 
 function render() {

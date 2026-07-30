@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bagr Ultimate</title>
+<link rel="apple-touch-icon" href="logo-180.png">
+<link rel="icon" href="logo-32.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bagr">
+<meta name="theme-color" content="#171B24">
+<link rel="stylesheet" href="shared.css?v=4">
+<style>
+  .plan-card { max-width: 480px; margin-bottom: 2rem; position: relative; overflow: hidden; }
+  .plan-card.ultimate { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .plan-badge {
+    display: inline-block; font-family: var(--mono); font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.08em; background: var(--amber); color: var(--ink); padding: 0.2rem 0.6rem;
+    border-radius: 999px; margin-bottom: 0.9rem;
+  }
+  .plan-price { font-family: var(--display); font-size: 2.2rem; font-weight: 700; margin-bottom: 0.2rem; }
+  .plan-price span { font-family: var(--mono); font-size: 0.9rem; font-weight: 400; opacity: 0.7; }
+  .plan-card p.plan-tagline { color: var(--paper-dim); font-size: 0.9rem; margin-bottom: 1.25rem; }
+  .feature-list { list-style: none; margin-bottom: 1.5rem; }
+  .feature-list li { display: flex; gap: 0.6rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.12); font-size: 0.92rem; }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list .tag {
+    font-family: var(--mono); font-size: 0.65rem; text-transform: uppercase; padding: 0.1rem 0.45rem;
+    border-radius: 999px; align-self: flex-start; margin-left: auto; white-space: nowrap;
+  }
+  .feature-list .tag.live { background: var(--amber); color: var(--ink); }
+  .feature-list .tag.soon { background: var(--paper-dim); color: var(--ink); opacity: 0.85; }
+
+  .status-banner {
+    max-width: 480px; padding: 1rem 1.25rem; border: 2px solid var(--ink); border-radius: var(--radius);
+    margin-bottom: 2rem; background: #E8F3E4;
+  }
+  .status-banner.insider { background: #FDF1D6; }
+
+  .insiders-card { max-width: 480px; }
+  .insiders-card h2 { font-size: 1.1rem; margin-bottom: 0.4rem; }
+  .insiders-card p { color: var(--slate); font-size: 0.9rem; }
+  #billing-note { font-size: 0.8rem; color: var(--slate); margin-top: 0.75rem; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="app-nav"></nav>
+
+  <main class="app-main">
+    <h1 style="font-size:1.8rem; margin-bottom:1.75rem;">Bagr Ultimate</h1>
+
+    <div id="status-banner-container"><!-- populated by JS if already on Ultimate --></div>
+
+    <div class="card plan-card ultimate" id="plan-card">
+      <span class="plan-badge">Bagr Ultimate</span>
+      <div class="plan-price">£5<span> / month</span></div>
+      <p class="plan-tagline">Your bag, but it thinks ahead.</p>
+      <ul class="feature-list">
+        <li>AI daily brief — a real sentence instead of a checklist <span class="tag live">Live</span></li>
+        <li>Pattern insights — spot *why* you keep forgetting things, not just that you do <span class="tag soon">Coming soon</span></li>
+        <li>Natural-language timetable setup — "every other Tuesday I have football" <span class="tag soon">Coming soon</span></li>
+        <li>Weekly recap — a Sunday-night summary of what slipped through <span class="tag soon">Coming soon</span></li>
+        <li>Smarter reminder wording <span class="tag soon">Coming soon</span></li>
+      </ul>
+      <button class="btn amber" onclick="subscribe()">Subscribe</button>
+      <div id="billing-note"></div>
+    </div>
+
+    <div class="card insiders-card">
+      <h2>Bagr Insiders</h2>
+      <p>A small allowlist of people who get Ultimate for free, added directly by the developer. There's no sign-up for this — if you've been added, Ultimate just unlocks automatically next time you open the app.</p>
+    </div>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js?v=4"></script>
+<script>
+let session;
+
+async function init() {
+  session = await requireSession();
+  if (!session) return;
+  renderDrawerNav('upgrade');
+
+  const banner = document.getElementById('status-banner-container');
+  const note = document.getElementById('billing-note');
+
+  try {
+    const { data, error } = await sb.functions.invoke('sync-subscription');
+    if (error) throw error;
+
+    if (data.tier === 'ultimate') {
+      document.getElementById('plan-card').style.display = 'none';
+      banner.innerHTML = data.source === 'insider'
+        ? `<div class="status-banner insider">✨ You're a <strong>Bagr Insider</strong> — Ultimate is unlocked for free.</div>`
+        : `<div class="status-banner">✓ You're subscribed to <strong>Bagr Ultimate</strong>.</div>`;
+    }
+  } catch (err) {
+    note.textContent = `Couldn't check your subscription status right now (${err.message}).`;
+  }
+}
+
+async function subscribe() {
+  const note = document.getElementById('billing-note');
+  note.textContent = 'Setting up checkout…';
+  try {
+    const { data, error } = await sb.functions.invoke('create-checkout');
+    if (error) throw error;
+    if (data?.url) {
+      window.location.href = data.url;
+    } else {
+      note.textContent = data?.message || "Billing isn't wired up yet — check back soon.";
+    }
+  } catch (err) {
+    note.textContent = "Billing isn't wired up yet — check back soon.";
+  }
+}
+
+init();
+</script>
+</body>
+</html>

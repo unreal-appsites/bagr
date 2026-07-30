@@ -73,6 +73,8 @@
     <h1 style="font-size:1.8rem; margin-bottom:0.4rem;">Your items</h1>
     <p class="label" style="margin-bottom:1.5rem;">flag it the moment it moves</p>
 
+    <div id="pattern-insights"><!-- populated by JS --></div>
+
     <p class="label" style="margin-bottom:0.6rem;">Bags</p>
     <div class="bags-row" id="bags-row"><!-- populated by JS --></div>
     <div class="add-bag-row">
@@ -101,6 +103,50 @@ async function init() {
   [items, bags] = await Promise.all([fetchItems(session.user.id), fetchBags(session.user.id)]);
   renderBags();
   render();
+  renderPatternInsights();
+}
+
+// Bagr Ultimate — "why do I keep forgetting this?" No AI call involved: this
+// is pure aggregation over `miss_events` (logged by track-misses each day),
+// computed right here in the browser. Free forever, gated only as a product
+// feature via the `subscriptions` tier check below.
+async function renderPatternInsights() {
+  const container = document.getElementById('pattern-insights');
+  if (!container) return;
+
+  const { data: sub } = await sb.from('subscriptions').select('tier').eq('user_id', session.user.id).maybeSingle();
+  if (!sub || sub.tier !== 'ultimate') {
+    container.innerHTML = `<p class="label" style="margin-bottom:1.5rem;">🔒 Pattern insights (which days you forget things most) are a <a href="upgrade.html">Bagr Ultimate</a> feature.</p>`;
+    return;
+  }
+
+  const { data: events } = await sb.from('miss_events').select('item_id, day_of_week').eq('user_id', session.user.id);
+  if (!events || events.length < 3) {
+    container.innerHTML = `<p class="label" style="margin-bottom:1.5rem;">Pattern insights unlock once Bagr has a bit more history on what you tend to forget.</p>`;
+    return;
+  }
+
+  const dayCounts = Array(7).fill(0);
+  events.forEach(e => dayCounts[e.day_of_week]++);
+  const worstDayIdx = dayCounts.indexOf(Math.max(...dayCounts));
+
+  const byItem = {};
+  events.forEach(e => {
+    byItem[e.item_id] = byItem[e.item_id] || { count: 0, days: Array(7).fill(0) };
+    byItem[e.item_id].count++;
+    byItem[e.item_id].days[e.day_of_week]++;
+  });
+  const topItemId = Object.keys(byItem).sort((a, b) => byItem[b].count - byItem[a].count)[0];
+  const topItem = items.find(i => i.id === Number(topItemId));
+  const topItemStats = byItem[topItemId];
+  const topItemDayIdx = topItemStats.days.indexOf(Math.max(...topItemStats.days));
+
+  container.innerHTML = `
+    <div class="card" style="margin-bottom:1.5rem;">
+      <h3 style="font-size:1.05rem; margin-bottom:0.6rem;">Pattern insights <span class="label">· Bagr Ultimate</span></h3>
+      <p style="margin-bottom:0.5rem;">You're most likely to forget something on <strong>${DAYS[worstDayIdx]}s</strong> (${dayCounts[worstDayIdx]} time${dayCounts[worstDayIdx] > 1 ? 's' : ''} so far).</p>
+      ${topItem ? `<p>Your <strong>${topItem.name}</strong> gets left behind most often — usually on <strong>${DAYS[topItemDayIdx]}s</strong> (${topItemStats.count} time${topItemStats.count > 1 ? 's' : ''} total).</p>` : ''}
+    </div>`;
 }
 
 function renderBags() {

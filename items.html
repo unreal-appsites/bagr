@@ -75,6 +75,8 @@
 
     <div id="pattern-insights"><!-- populated by JS --></div>
 
+    <div id="shared-bags"><!-- populated by JS, bags others shared with you --></div>
+
     <p class="label" style="margin-bottom:0.6rem;">Bags</p>
     <div class="bags-row" id="bags-row"><!-- populated by JS --></div>
     <div class="add-bag-row">
@@ -104,6 +106,7 @@ async function init() {
   renderBags();
   render();
   renderPatternInsights();
+  renderSharedBags();
 }
 
 // Bagr Ultimate — "why do I keep forgetting this?" No AI call involved: this
@@ -159,6 +162,7 @@ function renderBags() {
     <span class="bag-chip">
       <span class="dot" style="background:${bag.color};"></span>
       ${bag.name}
+      <button onclick="shareBag(${bag.id}, '${bag.name.replace(/'/g, "\\'")}')" aria-label="Share ${bag.name}" title="Share this bag">⇄</button>
       <button onclick="removeBag(${bag.id})" aria-label="Delete ${bag.name}">&times;</button>
     </span>
   `).join('');
@@ -169,11 +173,19 @@ async function addBag() {
   const name = input.value.trim();
   if (!name) return;
   const color = BAG_COLORS[bags.length % BAG_COLORS.length];
-  const bag = await createBag(session.user.id, name, color);
-  bags.push(bag);
-  input.value = '';
-  renderBags();
-  render();
+  try {
+    const bag = await createBag(session.user.id, name, color);
+    bags.push(bag);
+    input.value = '';
+    renderBags();
+    render();
+  } catch (err) {
+    if (bags.length >= 2) {
+      alert("Free accounts get 2 bags. Upgrade to Bagr Ultimate for unlimited bags — head to the Upgrade tab.");
+    } else {
+      alert('Could not create that bag — please try again.');
+    }
+  }
 }
 
 async function removeBag(bagId) {
@@ -183,6 +195,88 @@ async function removeBag(bagId) {
   items.forEach(i => { if (i.bag_id === bagId) i.bag_id = null; });
   renderBags();
   render();
+}
+
+// Bagr Ultimate — share a bag with someone else by email. They don't need to
+// have signed up yet; access activates the moment their email matches, same
+// pattern as Insiders. RLS enforces the Ultimate gate server-side — this
+// insert will fail for free-tier accounts no matter what the client sends.
+async function shareBag(bagId, bagName) {
+  const email = prompt(`Share "${bagName}" with (email address):`);
+  if (!email || !email.trim()) return;
+  const canEdit = confirm('Should they be able to toggle items home/away too?\n\nOK = view + edit\nCancel = view only');
+
+  const { error } = await sb.from('bag_shares').insert({
+    bag_id: bagId,
+    owner_user_id: session.user.id,
+    shared_with_email: email.trim().toLowerCase(),
+    permission: canEdit ? 'edit' : 'view',
+  });
+
+  if (error) {
+    if (error.code === '42501' || /row-level security/i.test(error.message || '')) {
+      alert('Sharing bags is a Bagr Ultimate feature — head to the Upgrade tab.');
+    } else {
+      alert("Couldn't share that bag — check the email address and try again.");
+    }
+    return;
+  }
+  alert(`Shared "${bagName}" with ${email.trim()}.`);
+}
+
+// Bags other people have shared with YOU. Read via bag_shares (RLS lets you
+// see rows naming your own email), then bags/items directly — no edge
+// function needed, the shared-bag RLS policies added alongside this feature
+// already scope access correctly.
+async function renderSharedBags() {
+  const container = document.getElementById('shared-bags');
+  if (!container || !session.user.email) return;
+
+  const { data: shares } = await sb.from('bag_shares')
+    .select('bag_id, permission')
+    .eq('shared_with_email', session.user.email.toLowerCase());
+
+  if (!shares || !shares.length) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const sections = await Promise.all(shares.map(async (share) => {
+    const [{ data: bag }, { data: sharedItems }] = await Promise.all([
+      sb.from('bags').select('*').eq('id', share.bag_id).maybeSingle(),
+      sb.from('items').select('*').eq('bag_id', share.bag_id),
+    ]);
+    if (!bag) return '';
+
+    const rows = (sharedItems || []).map(item => `
+      <div class="item-row">
+        <span class="item-name">${item.name}</span>
+        <div class="item-controls">
+          ${share.permission === 'edit'
+            ? `<div class="toggle">
+                 <button class="${item.location === 'home' ? 'active home' : ''}" onclick="setSharedLoc(${item.id}, 'home')">Home</button>
+                 <button class="${item.location === 'away' ? 'active away' : ''}" onclick="setSharedLoc(${item.id}, 'away')">Away</button>
+               </div>`
+            : `<span class="label">${item.location === 'home' ? 'Home' : 'Away'}</span>`}
+        </div>
+      </div>`).join('');
+
+    return `
+      <div class="bag-group">
+        <div class="bag-group-header">
+          <span class="dot" style="background:${bag.color};"></span>
+          <h3>${bag.name} <span class="label">· shared with you (${share.permission})</span></h3>
+        </div>
+        ${rows || `<p class="label">No items in this bag yet.</p>`}
+      </div>`;
+  }));
+
+  container.innerHTML = sections.filter(Boolean).join('');
+}
+
+async function setSharedLoc(itemId, location) {
+  await sb.from('items').update({ location }).eq('id', itemId);
+  renderSharedBags();
 }
 
 function render() {

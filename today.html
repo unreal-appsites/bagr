@@ -47,6 +47,14 @@
     border-top: 2px dashed var(--slate); font-size: 0.85rem; color: var(--slate);
   }
 
+  #streak-badge { max-width: 640px; margin-bottom: 1rem; }
+  .streak-pill {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: var(--ink); color: var(--paper); font-family: var(--mono);
+    font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 999px;
+  }
+  .streak-pill .flame { font-size: 1rem; }
+
   .skipped-list { max-width: 640px; margin-bottom: 1.5rem; }
   .skipped-list h4 { font-size: 0.9rem; margin-bottom: 0.75rem; }
   .skipped-row {
@@ -87,6 +95,8 @@
     <p class="label" style="margin-bottom:0.6rem;">Next departure</p>
     <h1 style="font-size:2.1rem; margin-bottom:0.5rem;">What you need next</h1>
     <p style="color:var(--slate); margin-bottom:2rem;">Cross-checked against what's home right now.</p>
+
+    <div id="streak-badge"><!-- populated by JS --></div>
 
     <div class="card brief-card" id="brief-card"><!-- populated by JS --></div>
 
@@ -141,7 +151,7 @@
 <script src="shared.js?v=4"></script>
 <script>
 const VAPID_PUBLIC_KEY = 'BK_R-3kGaNHd-APrGqj8mrT-Y8xrfGMgjZSx_i7sjf2fyCr6LeppvrR__D6dcsuPHO_bQgJgLdIqyFQPb2VOqQk';
-let session, slots = [], items = [], bags = [], skips = [], profile = null;
+let session, slots = [], items = [], bags = [], skips = [], profile = null, missDates = new Set();
 
 async function init() {
   session = await requireSession();
@@ -151,8 +161,8 @@ async function init() {
 
   const appliedDraft = await applyOnboardingDraft(userId);
 
-  [slots, items, profile, bags, skips] = await Promise.all([
-    fetchSlots(userId), fetchItems(userId), fetchProfile(userId), fetchBags(userId), fetchSkips(userId)
+  [slots, items, profile, bags, skips, missDates] = await Promise.all([
+    fetchSlots(userId), fetchItems(userId), fetchProfile(userId), fetchBags(userId), fetchSkips(userId), fetchMissDates(userId)
   ]);
 
   if (appliedDraft) {
@@ -166,6 +176,7 @@ async function init() {
   }
 
   renderBrief();
+  renderStreak();
   render();
   renderSkippedList();
   populateTimeOptions();
@@ -220,6 +231,45 @@ function utcHourToLocalHour(utcHour) {
 
 // Today's brief: what's needed for TODAY specifically (render()/upcoming below
 // only looks ahead from tomorrow), plus a nod to anything chronically forgotten.
+// Packing streak (free, no AI, no server call): walk backward day-by-day
+// from yesterday, skipping any day that had no slots at all, and counting
+// consecutive miss-free days until the first day that had a miss_events row.
+function renderStreak() {
+  const badge = document.getElementById('streak-badge');
+  const MAX_LOOKBACK_DAYS = 60;
+
+  let streak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  cursor.setDate(cursor.getDate() - 1); // start from yesterday — today isn't "finished" yet
+
+  for (let i = 0; i < MAX_LOOKBACK_DAYS; i++) {
+    const dayIdx = (cursor.getDay() + 6) % 7; // Mon=0
+    const dateStr = cursor.toISOString().slice(0, 10);
+    const weekLetter = weekLetterForDate(profile, cursor);
+
+    const daySlots = slots.filter(s =>
+      s.day_of_week === dayIdx &&
+      (weekLetter === null || s.week === null || s.week === weekLetter) &&
+      !isSlotSkipped(skips, s.id, dateStr)
+    );
+
+    if (daySlots.length) {
+      if (missDates.has(dateStr)) break; // streak-breaking miss — stop counting
+      streak++;
+    }
+    // no slots that day → doesn't count either way, keep looking further back
+
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  if (streak === 0) {
+    badge.innerHTML = '';
+    return;
+  }
+  badge.innerHTML = `<span class="streak-pill"><span class="flame">🔥</span> ${streak}-day packing streak</span>`;
+}
+
 function greetingForHour(hour) {
   if (hour < 12) return 'Good morning!';
   if (hour < 18) return 'Good afternoon!';
@@ -250,7 +300,6 @@ function renderBrief() {
       <h3>${greeting}</h3>
       <p class="brief-empty" id="brief-status-line">Nothing on today's timetable${weekLetter ? ` (week ${weekLetter})` : ''}. Nothing to grab before you head out.</p>
       ${forgottenLine}`;
-    maybeEnhanceBriefWithAI({ daySlots: [], needed: [], missing: [], forgotten: forgotten.map(i => i.name), weekLetter });
     return;
   }
 
@@ -274,33 +323,6 @@ function renderBrief() {
       : `<p class="brief-status ok" id="brief-status-line">✓ Everything's packed for today</p>`}
     ${rows}
     ${forgottenLine}`;
-
-  maybeEnhanceBriefWithAI({
-    daySlots: daySlots.map(s => s.label),
-    needed: needed.map(i => i.name),
-    missing: missing.map(i => i.name),
-    forgotten: forgotten.map(i => i.name),
-    weekLetter
-  });
-}
-
-// Ultimate-only: ask the ai-brief edge function to turn the template line
-// above into a natural sentence. Silently does nothing if the user isn't
-// entitled, the function isn't deployed yet, or the call fails for any
-// reason — the plain template line already rendered is always a valid brief
-// on its own, so there's no loading state or error state to show here.
-async function maybeEnhanceBriefWithAI(payload) {
-  try {
-    const { data, error } = await sb.functions.invoke('ai-brief', { body: payload });
-    if (error || !data || !data.entitled || !data.brief) return;
-    const line = document.getElementById('brief-status-line');
-    if (line) {
-      line.textContent = data.brief;
-      line.classList.remove('warn', 'ok');
-    }
-  } catch (err) {
-    // Non-fatal — template brief stands.
-  }
 }
 
 function render() {

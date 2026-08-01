@@ -151,6 +151,16 @@ function isSlotSkipped(skips, slotId, dateStr) {
   return skips.some(s => s.slot_id === slotId && s.skip_date === dateStr);
 }
 
+// Packing streaks (free feature): a set of every date this user missed at
+// least one item, per miss_events (logged daily by track-misses). Streak
+// length is computed client-side by walking backward day-by-day and asking
+// "did this weekday have slots, and if so, was this date miss-free?"
+async function fetchMissDates(userId) {
+  const { data, error } = await sb.from('miss_events').select('missed_date').eq('user_id', userId);
+  if (error) throw error;
+  return new Set((data || []).map(r => r.missed_date));
+}
+
 // ---- Data: bags ----
 async function fetchBags(userId) {
   const { data, error } = await sb.from('bags').select('*').eq('user_id', userId).order('name');

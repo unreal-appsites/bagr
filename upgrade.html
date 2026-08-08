@@ -55,9 +55,12 @@
     <div id="status-banner-container"><!-- populated by JS if already on Ultimate --></div>
 
     <div class="card plan-card ultimate" id="plan-card">
-      <span class="plan-badge">Bagr Ultimate</span>
-      <div class="plan-price">£5<span> / month</span></div>
-      <p class="plan-tagline">Your bag, but it thinks ahead.</p>
+      <div id="plan-pricing-block">
+        <span class="plan-badge">Bagr Ultimate</span>
+        <div class="plan-price">£5<span> once</span></div>
+        <p class="plan-tagline">Your bag, but it thinks ahead — pay once, keep it forever.</p>
+      </div>
+      <p id="plan-unlocked-heading" style="display:none; font-weight:600; margin-bottom:0.9rem;">What that includes:</p>
       <ul class="feature-list">
         <li>Pattern insights — spot *why* you keep forgetting things, not just that you do <span class="tag live">Live</span></li>
         <li>Unlimited bags — free accounts get 2 <span class="tag live">Live</span></li>
@@ -66,8 +69,10 @@
         <li>Weekly recap — a Sunday-night summary of what slipped through <span class="tag soon">Coming soon</span></li>
         <li>Smarter reminder wording <span class="tag soon">Coming soon</span></li>
       </ul>
-      <button class="btn amber" onclick="subscribe()">Subscribe</button>
-      <div id="billing-note"></div>
+      <div id="plan-buy-block">
+        <button class="btn amber" onclick="subscribe()">Unlock Ultimate — £5</button>
+        <div id="billing-note"></div>
+      </div>
     </div>
 
     <div class="card insiders-card">
@@ -95,10 +100,12 @@ async function init() {
     if (error) throw error;
 
     if (data.tier === 'ultimate') {
-      document.getElementById('plan-card').style.display = 'none';
+      document.getElementById('plan-pricing-block').style.display = 'none';
+      document.getElementById('plan-buy-block').style.display = 'none';
+      document.getElementById('plan-unlocked-heading').style.display = 'block';
       banner.innerHTML = data.source === 'insider'
         ? `<div class="status-banner insider">✨ You're a <strong>Bagr Insider</strong> — Ultimate is unlocked for free.</div>`
-        : `<div class="status-banner">✓ You're subscribed to <strong>Bagr Ultimate</strong>.</div>`;
+        : `<div class="status-banner">✓ You own <strong>Bagr Ultimate</strong> — thanks for the support!</div>`;
     }
   } catch (err) {
     note.textContent = `Couldn't check your subscription status right now (${err.message}).`;
